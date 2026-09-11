@@ -18,6 +18,7 @@ window.CS2_TACTICS_DATA = {
       perPlayer: 1,
       teamMax: 5,
       duration: '18 秒烟云',
+      durationSeconds: 18,
       trigger: '落地后生成烟云',
       effect: '遮挡视线；子弹与爆炸会短暂扰动烟云，火焰可以将烟熄灭。',
       color: '#b4cec5'
@@ -31,6 +32,8 @@ window.CS2_TACTICS_DATA = {
       perPlayer: 2,
       teamMax: 10,
       duration: '最长约 5 秒致盲',
+      durationSeconds: 5,
+      timelineStartSeconds: 1.5,
       trigger: '约 1.5 秒后爆炸',
       effect: '按距离、视角与遮挡程度产生不同程度的致盲和耳鸣；背身或被遮挡会显著减弱。',
       color: '#f2dca5'
@@ -44,6 +47,9 @@ window.CS2_TACTICS_DATA = {
       perPlayer: 1,
       teamMax: 5,
       duration: '瞬时爆炸',
+      durationSeconds: 1.5,
+      timelineStartSeconds: 1.5,
+      timelineWindowSeconds: 0.15,
       trigger: '约 1.5 秒后爆炸',
       effect: '对范围内目标造成爆炸伤害；距离、护甲和遮挡会改变实际伤害。',
       color: '#f09b77'
@@ -57,6 +63,7 @@ window.CS2_TACTICS_DATA = {
       perPlayer: 1,
       teamMax: 5,
       duration: 'T 7.0 秒 · CT 5.5 秒',
+      durationSeconds: { T: 7, CT: 5.5 },
       trigger: '接触地面后点燃',
       effect: '在落点附近铺开火焰并持续造成伤害；烟雾可以熄灭火焰，火焰会受地面与碰撞影响。',
       color: '#ff9a62'
@@ -70,6 +77,7 @@ window.CS2_TACTICS_DATA = {
       perPlayer: 1,
       teamMax: 5,
       duration: '约 15 秒声音周期',
+      durationSeconds: 15,
       trigger: '落地后开始播放',
       effect: '模拟当前持有武器的枪声并制造误导；它不产生烟、火或闪光效果。',
       color: '#b39be8'
