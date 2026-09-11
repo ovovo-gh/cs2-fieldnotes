@@ -123,7 +123,8 @@ window.CS2_TACTICS_DATA = {
           ],
           result: '封住中路箱体附近的视线，方便 T 方争夺中路。',
           source: 'https://csnades.gg/dust2/smokes/xbox-from-lower-tunnels',
-          updated: '2024-01-18'
+          updated: '2024-01-18',
+          media: { poster: 'https://assets.csnades.gg/nades/dust2-smoke-epau9Q3Dll/thumbnail.webp', video: 'https://assets.csnades.gg/nades/dust2-smoke-epau9Q3Dll/hq.mp4' }
         },
         {
           id: 'dust2-a-cross-long',
@@ -142,7 +143,8 @@ window.CS2_TACTICS_DATA = {
           ],
           result: '封锁 A Cross 交叉火力，配合长管或短道进攻。',
           source: 'https://csnades.gg/dust2/smokes/a-cross-from-long-doors-b',
-          updated: '2024-05-28'
+          updated: '2024-05-28',
+          media: { poster: 'https://assets.csnades.gg/nades/dust2-smoke-N6LQBzQWM5/thumbnail.webp', video: 'https://assets.csnades.gg/nades/dust2-smoke-N6LQBzQWM5/hq.mp4' }
         }
       ]
     },
@@ -185,7 +187,8 @@ window.CS2_TACTICS_DATA = {
           ],
           result: '封住中路 Window，降低 CT 从窗位观察中路的能力。',
           source: 'https://csnades.gg/mirage/smokes/window-from-t-spawn-c',
-          updated: '2025-11-05'
+          updated: '2025-11-05',
+          media: { poster: 'https://assets.csnades.gg/nades/mirage-smoke-VrvjVQyEOz/thumbnail.webp', video: 'https://assets.csnades.gg/nades/mirage-smoke-VrvjVQyEOz/hq.mp4' }
         },
         {
           id: 'mirage-jungle-a-ramp',
@@ -204,7 +207,8 @@ window.CS2_TACTICS_DATA = {
           ],
           result: '切断 Jungle 对 A 区的主要视线，减少进点时的交叉枪线。',
           source: 'https://csnades.gg/mirage/smokes/jungle-from-a-ramp',
-          updated: '2024-01-20'
+          updated: '2024-01-20',
+          media: { poster: 'https://assets.csnades.gg/nades/mirage-smoke-IDOx7cwRPw/thumbnail.webp', video: 'https://assets.csnades.gg/nades/mirage-smoke-IDOx7cwRPw/hq.mp4' }
         },
         {
           id: 'mirage-stairs-tspawn',
@@ -223,7 +227,8 @@ window.CS2_TACTICS_DATA = {
           ],
           result: '遮住 Stairs 方向的 CT 枪线，常与 Jungle 烟组成基础 A 烟雾。',
           source: 'https://csnades.gg/mirage/smokes/stairs-from-t-spawn',
-          updated: '2025-05-01'
+          updated: '2025-05-01',
+          media: { poster: 'https://assets.csnades.gg/nades/mirage-smoke-HM7RUQkS6z/thumbnail.webp', video: 'https://assets.csnades.gg/nades/mirage-smoke-HM7RUQkS6z/hq.mp4' }
         }
       ]
     },
@@ -266,7 +271,8 @@ window.CS2_TACTICS_DATA = {
           ],
           result: '封住 Coffins 方向，保护 B 点下包和后续守包位置。',
           source: 'https://csnades.gg/inferno/smokes/coffins-from-half-wall-a',
-          updated: '2024-04-10'
+          updated: '2024-04-10',
+          media: { poster: 'https://assets.csnades.gg/nades/inferno-smoke-Fomlq5TPso/thumbnail.webp', video: 'https://assets.csnades.gg/nades/inferno-smoke-Fomlq5TPso/hq.mp4' }
         },
         {
           id: 'inferno-ct-tspawn',
@@ -285,7 +291,8 @@ window.CS2_TACTICS_DATA = {
           ],
           result: '切断 CT 方向回防和长枪线，配合 Coffins 烟完成 B 进攻。',
           source: 'https://csnades.gg/inferno/smokes/ct-from-t-spawn',
-          updated: '2024-01-20'
+          updated: '2024-01-20',
+          media: { poster: 'https://assets.csnades.gg/nades/inferno-smoke-xWSXzEwtxB/thumbnail.webp', video: 'https://assets.csnades.gg/nades/inferno-smoke-xWSXzEwtxB/hq.mp4' }
         },
         {
           id: 'inferno-b-entrance-ct',
@@ -304,7 +311,8 @@ window.CS2_TACTICS_DATA = {
           ],
           result: '拖慢 B 入口推进，给 CT 回防或等待队友支援争取时间。',
           source: 'https://csnades.gg/inferno/smokes/b-entrance-from-ct',
-          updated: '2024-06-29'
+          updated: '2024-06-29',
+          media: { poster: 'https://assets.csnades.gg/nades/inferno-smoke-xW7r3rJT5R/thumbnail.webp', video: 'https://assets.csnades.gg/nades/inferno-smoke-xW7r3rJT5R/hq.mp4' }
         }
       ]
     }
