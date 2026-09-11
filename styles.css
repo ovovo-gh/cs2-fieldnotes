@@ -32,6 +32,10 @@
 .lab-form .field{margin-bottom:16px}
 .lab-form .field small{color:var(--muted);font-size:.75rem;line-height:1.6}
 .number-input{font-variant-numeric:tabular-nums}
+.preset-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-3px 0 17px;color:var(--muted);font-size:.72rem;line-height:1.6}
+.preset-row>div{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.preset-button{padding:6px 8px;background:#20271d;border:1px solid #3d4c36;border-radius:5px;color:var(--green);font-size:.7rem}
+.preset-button:hover{background:#303a27;border-color:#718958}
 .metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:20px}
 .metric-card{padding:14px 13px;border-radius:7px;background:#20271d;border:1px solid #394633;min-width:0}
 .metric-card .metric-value{display:block;font-size:1.25rem;color:var(--green);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
