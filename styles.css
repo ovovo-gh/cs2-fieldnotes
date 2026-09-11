@@ -140,6 +140,9 @@
 .recoil-history-item .score{color:var(--green);font-weight:600;font-variant-numeric:tabular-nums}
 .recoil-history-item p{color:var(--muted);font-size:.69rem;line-height:1.6;margin:4px 0 0}
 .weapon-count{font-size:.7rem;color:var(--muted);margin:3px 0 10px}
+.legend-dot.miss{width:10px;height:10px;border-radius:50%;background:#ff6b5b}
+.timing-badge{display:inline-flex;align-items:center;min-height:36px;padding:0 10px;border:1px solid #4f6041;border-radius:5px;color:#c8dd91;background:#182019;font-size:.7rem;font-variant-numeric:tabular-nums}
+.recoil-controls button:disabled{opacity:.65;cursor:wait}
 
 @media(max-width:1150px){
   .recoil-layout{grid-template-columns:220px minmax(0,1fr)}

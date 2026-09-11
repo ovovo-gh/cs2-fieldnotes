@@ -52,7 +52,8 @@
     for(const session of rawRecoil.sessions||[]){
       if(!session||typeof session!=='object'||!safeId.test(String(session.id||''))||!validDate(String(session.date||''))||typeof session.weaponId!=='string'||session.weaponId.length>40)throw Error('压枪记录格式不正确');
       const trace=Array.isArray(session.trace)?session.trace.slice(0,150).filter(p=>p&&Number.isFinite(Number(p.x))&&Number.isFinite(Number(p.y))).map(p=>({x:numberIn(p.x,-1200,1200,0),y:numberIn(p.y,-1200,1200,0)})):[];
-      s.recoil.sessions.push({id:String(session.id),date:String(session.date),weaponId:String(session.weaponId),shots:numberIn(session.shots,1,150,10),score:numberIn(session.score,0,100,0),meanError:numberIn(session.meanError,0,2000,0),verticalError:numberIn(session.verticalError,-2000,2000,0),lateralError:numberIn(session.lateralError,-2000,2000,0),trace});
+      const shots=numberIn(session.shots,1,150,10),shotErrors=Array.isArray(session.shotErrors)?session.shotErrors.slice(0,150).map(n=>numberIn(n,0,2000,0)):[];
+      s.recoil.sessions.push({id:String(session.id),date:String(session.date),weaponId:String(session.weaponId),shots, targetShots:numberIn(session.targetShots,1,150,shots),score:numberIn(session.score,0,100,0),meanError:numberIn(session.meanError,0,2000,0),verticalError:numberIn(session.verticalError,-2000,2000,0),lateralError:numberIn(session.lateralError,-2000,2000,0),lateShots:numberIn(session.lateShots,0,150,0),timingAccuracy:numberIn(session.timingAccuracy,0,100,100),shotErrors,trace});
     }
     return s;
   }
@@ -75,8 +76,9 @@
   let route='',filter='全部',query='',editing=null,logFilter='全部';
   let remaining=480,total=480,timerEnd=null,timerInterval=null;
   let aimSession=null,aimInterval=null;
-  let recoilWeaponId='ak47',recoilCategory='全部',recoilQuery='',recoilShots=10,recoilSession=null;
-  const recoilCategories=['全部','步枪','冲锋枪','霰弹枪','机枪','手枪','狙击枪'];
+  let recoilWeaponId='ak47',recoilCategory='全部',recoilQuery='',recoilShots=10,recoilSession=null,recoilFrame=null;
+  const recoilReadyDelay=650,recoilErrorThreshold=24;
+  const recoilCategories=['全部','步枪','冲锋枪','机枪'];
   const recoilDeltas=value=>String(value||'').trim().split(/\s*;\s*/).filter(Boolean).map(pair=>{
     const [dx,dy]=pair.split(',').map(Number);return {dx:Number.isFinite(dx)?dx:0,dy:Number.isFinite(dy)?dy:0};
   });
@@ -84,6 +86,7 @@
     let x=0,y=0;return recoilDeltas(value).map(({dx,dy})=>{x-=dx;y+=dy;return {x,y};});
   };
   const recoilPatterns=Object.fromEntries(Object.entries(window.CS2_RECOIL_DATA||{}).map(([key,value])=>[key,cumulativeRecoilPath(value)]));
+  const recoilInterval=weapon=>60000/Math.max(1,Number(weapon?.fireRate)||600);
   const weapons=[
     {id:'ak47',name:'AK-47',alias:'AK',category:'步枪',pattern:'ak47',recoilType:'fixed',magazine:30,reserveMags:3,fireRate:600,difficulty:'进阶',note:'前 10 发先练垂直下拉，再加入左右反向修正。'},
     {id:'m4a4',name:'M4A4',alias:'M4',category:'步枪',pattern:'m4a4',recoilType:'fixed',magazine:30,reserveMags:4,fireRate:666,difficulty:'进阶',note:'横向摆动比 AK 更温和，先练稳定的中段连发。'},
@@ -99,28 +102,11 @@
     {id:'ump45',name:'UMP-45',alias:'UMP',category:'冲锋枪',pattern:'ump45',recoilType:'fixed',magazine:25,reserveMags:3,fireRate:666,difficulty:'中等',note:'这是 25 发弹匣；中近距离更容易控制，先固定交火距离。'},
     {id:'p90',name:'P90',alias:'P90',category:'冲锋枪',pattern:'p90',recoilType:'fixed',magazine:50,reserveMags:2,fireRate:857,difficulty:'进阶',note:'这是 50 发弹匣；弹匣长但不代表可以无脑扫，记录前 20 发横向误差。'},
     {id:'bizon',name:'PP-Bizon',alias:'Bizon',category:'冲锋枪',pattern:'bizon',recoilType:'fixed',magazine:64,reserveMags:2,fireRate:750,difficulty:'中等',note:'这是 64 发弹匣；用作近距离移动跟枪专项，别把压枪与跟枪混为一谈。'},
-    {id:'nova',name:'Nova',alias:'Nova',category:'霰弹枪',recoilType:'pellet',magazine:8,reserveUnits:32,reserveUnit:'发',pellets:9,difficulty:'基础',note:'8 发管式弹仓，每次开火 9 枚弹丸；训练重点是散布、停身与开火节奏。'},
-    {id:'xm1014',name:'XM1014',alias:'XM',category:'霰弹枪',recoilType:'pellet',magazine:7,reserveUnits:32,reserveUnit:'发',pellets:6,difficulty:'基础',note:'7 发弹仓，每次开火 6 枚弹丸；训练重点是散布与射击后转移。'},
-    {id:'mag7',name:'MAG-7',alias:'MAG',category:'霰弹枪',recoilType:'pellet',magazine:5,reserveUnits:15,reserveUnit:'发',pellets:8,difficulty:'基础',note:'5 发弹匣，每次开火 8 枚弹丸；固定近角训练，结合射击后撤退。'},
-    {id:'sawedoff',name:'Sawed-Off',alias:'短喷',category:'霰弹枪',recoilType:'pellet',magazine:7,reserveUnits:32,reserveUnit:'发',pellets:8,difficulty:'基础',note:'7 发管式弹仓，每次开火 8 枚弹丸；近距离单次命中优先。'},
     {id:'m249',name:'M249',alias:'M249',category:'机枪',pattern:'m249',recoilType:'fixed',magazine:100,reserveMags:2,fireRate:750,difficulty:'高',note:'这是 100 发弹匣；前段控制后再观察横向漂移，建议分段练习。'},
-    {id:'negev',name:'Negev',alias:'Negev',category:'机枪',pattern:'negev',recoilType:'fixed',magazine:150,reserveMags:2,fireRate:800,difficulty:'高',note:'这是 150 发弹匣；前段上扬后进入稳定区，建议按 10～20 发分段练。'},
-    {id:'glock18',name:'Glock-18',alias:'Glock',category:'手枪',recoilType:'single',magazine:20,reserveMags:3,difficulty:'基础',note:'20 发弹匣；按距离控制点击，不要为了速度把节奏拉满。'},
-    {id:'usp',name:'USP-S',alias:'USP',category:'手枪',recoilType:'single',magazine:12,reserveMags:2,difficulty:'基础',note:'12 发弹匣；头线与小幅修正优先，练习每发之间的恢复。'},
-    {id:'p2000',name:'P2000',alias:'P2K',category:'手枪',recoilType:'single',magazine:13,reserveMags:4,difficulty:'基础',note:'13 发弹匣；固定中距离，观察点击节奏和首枪稳定性。'},
-    {id:'p250',name:'P250',alias:'P250',category:'手枪',recoilType:'single',magazine:13,reserveMags:3,difficulty:'基础',note:'13 发弹匣；先练停稳首枪，再练两发之间的快速修正。'},
-    {id:'fiveseven',name:'Five-SeveN',alias:'57',category:'手枪',recoilType:'single',magazine:20,reserveMags:2,difficulty:'中等',note:'20 发弹匣；近距离连点更实用，避免照搬步枪的长扫。'},
-    {id:'tec9',name:'Tec-9',alias:'Tec',category:'手枪',recoilType:'single',magazine:18,reserveMags:3,difficulty:'中等',note:'18 发弹匣；移动与近距离节奏单独练，远距离先停再点。'},
-    {id:'cz75',name:'CZ75-Auto',alias:'CZ',category:'手枪',pattern:'cz75',recoilType:'fixed',magazine:12,reserveMags:2,fireRate:600,difficulty:'进阶',note:'12 发弹匣；短窗口内控制前段，及时换弹或切换身位处理。'},
-    {id:'deagle',name:'Desert Eagle',alias:'Deagle',recoilType:'single',magazine:7,reserveMags:3,difficulty:'高',note:'7 发弹匣；命中优先，等待恢复，远距离连续猛点容易失控。'},
-    {id:'r8',name:'R8 Revolver',alias:'R8',category:'手枪',recoilType:'single',magazine:8,reserveMags:2,difficulty:'高',note:'8 发弹巢；按住蓄力时更要保持停稳，重点观察首发与恢复。'},
-    {id:'dualies',name:'Dual Berettas',alias:'双枪',category:'手枪',recoilType:'single',magazine:30,reserveMags:2,difficulty:'中等',note:'30 发弹匣；用固定距离记录左右散布与点击节奏。'},
-    {id:'awp',name:'AWP',alias:'AWP',category:'狙击枪',recoilType:'single',magazine:5,reserveMags:2,difficulty:'单发',note:'5 发弹匣；栓动单发，没有可学习的全自动压枪线。'},
-    {id:'ssg08',name:'SSG 08',alias:'鸟狙',category:'狙击枪',recoilType:'single',magazine:10,reserveMags:2,difficulty:'单发',note:'10 发弹匣；开镜命中、头线和射击后移动要分开观察。'},
-    {id:'scar20',name:'SCAR-20',alias:'SCAR',category:'狙击枪',recoilType:'semi',magazine:20,reserveMags:2,difficulty:'中等',note:'20 发弹匣；半自动连续射击按节奏控制，不使用固定全自动线。'},
-    {id:'g3sg1',name:'G3SG1',alias:'G3',category:'狙击枪',recoilType:'semi',magazine:20,reserveMags:2,difficulty:'中等',note:'20 发弹匣；先练短段连续射击和回掩体，再增加目标移动。'}
+    {id:'negev',name:'Negev',alias:'Negev',category:'机枪',pattern:'negev',recoilType:'fixed',magazine:150,reserveMags:2,fireRate:800,difficulty:'高',note:'这是 150 发弹匣；前段上扬后进入稳定区，建议按 10～20 发分段练。'}
   ];
   weapons.forEach(weapon=>{weapon.patternShots=weapon.pattern?recoilPatterns[weapon.pattern]?.length||0:0;});
+  const supportedRecoilWeapons=new Set(weapons.map(weapon=>weapon.id));
   const heading=(eye,title,sub,extra='')=>`<div class="page-heading"><div><p class="eyebrow">${eye}</p><h1>${title}</h1><p class="muted">${sub}</p></div>${extra}</div>`;
   function dashboard(){
     const dates=Object.values(state.days).filter(d=>d.tasks.length).length,current=weeks.findIndex((_,i)=>!state.weeks.includes(i+1));
@@ -130,7 +116,7 @@
     <section class="stats" aria-label="学习统计">${[[dates,'天','累计训练','▦'],[state.read.length,'/ 17','已学章节','▤'],[state.logs.length,'篇','复盘记录','✎']].map(s=>`<div class="stat"><div><strong>${s[0]}<span> ${s[1]}</span></strong><span>${s[2]}</span></div><span class="stat-symbol">${s[3]}</span></div>`).join('')}</section>
     <div class="two-col"><section class="panel"><div class="section-head"><h2>今天的训练</h2><span class="tiny">${day().tasks.length} / 6 已完成</span></div>${tasks.map((t,i)=>`<div class="task-row ${day().tasks.includes(i)?'done':''}"><label><input type="checkbox" data-task="${i}" ${day().tasks.includes(i)?'checked':''}><span><strong>${t[0]}</strong><small>${t[1]}</small></span></label><span class="minutes">${t[2]}</span><a href="#chapter/${t[3]}" aria-label="学习${t[0]}" class="text-button">↗</a></div>`).join('')}<div class="track" role="progressbar" aria-label="今日训练完成度" aria-valuemin="0" aria-valuemax="6" aria-valuenow="${day().tasks.length}"><span style="width:${day().tasks.length/6*100}%"></span></div></section>
     <aside><section class="panel"><div class="section-head"><h2>${current<0?'八周训练已完成':`第 ${String(current+1).padStart(2,'0')} 周`}</h2><a class="text-button" href="#plan">查看计划 ↗</a></div><p class="muted">${current<0?'回看基线，为下一轮选一个重点。':weeks[current][1]}</p><span class="tiny">最近 21 天 · 完成任一训练即点亮</span><div class="heatmap">${heat.join('')}</div><div class="timer"><label for="timer-length" class="tiny">专注一个动作</label><select id="timer-length" aria-label="训练计时时长" class="chip">${[[480,'8 分钟 · 基础'],[600,'10 分钟 · 专项'],[1200,'20 分钟 · 打狙']].map(t=>`<option value="${t[0]}" ${total===t[0]?'selected':''}>${t[1]}</option>`).join('')}</select><div class="timer-display" id="timer-display">${formatTime(remaining)}</div><div class="timer-actions"><button id="timer-toggle" class="primary">${timerEnd?'暂停计时':'开始计时'}</button><button id="timer-reset" class="secondary">重置</button></div></div></section></aside></div>
-    <div class="section-head"><h2>高频技巧，随手查阅</h2><a href="#library" class="text-button">全部 17 章 ↗</a></div><div class="quick-links">${[['02','如何正确急停','按键顺序 · 出枪时机 · 常见纠错','chapter'],['05','把 AWP 打得更稳','架点选择 · 空枪撤退 · 回防处理','chapter'],['11','残局先做哪一步','1v1 / 1v2 · 守包与拆包 · 时间判断','chapter'],['sensitivity','找到你的灵敏度','通用枪械与狙击 / 开镜分开测试','lab'],['recoil','开始压枪训练','AK · M4 · 咖喱 · 全类型武器记录','lab']].map(c=>`<a class="quick-link" href="#${c[3]==='chapter'?'chapter/':''}${c[0]}"><span class="num">${c[3]==='chapter'?'FIELD GUIDE':'TRAINING LAB'} / ${c[0]}</span><strong>${c[1]} ↗</strong><p>${c[2]}</p></a>`).join('')}</div>`;
+    <div class="section-head"><h2>高频技巧，随手查阅</h2><a href="#library" class="text-button">全部 17 章 ↗</a></div><div class="quick-links">${[['02','如何正确急停','按键顺序 · 出枪时机 · 常见纠错','chapter'],['05','把 AWP 打得更稳','架点选择 · 空枪撤退 · 回防处理','chapter'],['11','残局先做哪一步','1v1 / 1v2 · 守包与拆包 · 时间判断','chapter'],['sensitivity','找到你的灵敏度','通用枪械与狙击 / 开镜分开测试','lab'],['recoil','开始压枪训练','AK · M4 · 咖喱 · 可连续扫射武器','lab']].map(c=>`<a class="quick-link" href="#${c[3]==='chapter'?'chapter/':''}${c[0]}"><span class="num">${c[3]==='chapter'?'FIELD GUIDE':'TRAINING LAB'} / ${c[0]}</span><strong>${c[1]} ↗</strong><p>${c[2]}</p></a>`).join('')}</div>`;
   }
   const matches=()=>chapters.filter(c=>(filter==='全部'||(filter==='我的收藏'?state.bookmarks.includes(c.id):c.category===filter))&&(!query.trim()||`${c.title} ${c.text}`.toLowerCase().includes(query.trim().toLowerCase())));
   function cards(){const list=matches();return list.length?list.map(c=>`<a class="chapter-card" href="#chapter/${c.id}"><div class="card-meta"><span class="num">CHAPTER ${c.id}</span><span>${c.category} · ${c.minutes} 分钟</span></div><h2>${esc(c.title)}</h2><p>${esc(c.description)}</p><div class="card-footer"><span>${state.read.includes(c.id)?'✓ 已学完':state.bookmarks.includes(c.id)?'☆ 已收藏':'开始阅读'}</span><span>↗</span></div></a>`).join(''):'<div class="empty"><strong>没有找到匹配章节</strong>试试“急停”“空枪”“拆包”，或切换分类。</div>';}
@@ -190,13 +176,9 @@
     return `${weapon.magazine} 发/匣`;
   }
   function weaponMechanicLabel(weapon){
-    if(weapon.recoilType==='fixed')return `${weapon.patternShots} 发固定线`;
-    if(weapon.recoilType==='pellet')return `${weapon.pellets} 弹丸/发`;
-    if(weapon.recoilType==='semi')return '半自动恢复';
-    return '单发恢复';
+    return `${weapon.patternShots} 发 · ${weapon.fireRate} RPM · ${recoilInterval(weapon).toFixed(0)} ms/发`;
   }
   function recoilViewSession(weapon){
-    if(weapon.recoilType!=='fixed')return null;
     if(recoilSession&&recoilSession.weaponId===weapon.id)return recoilSession;
     const saved=state.recoil.sessions.find(item=>item.weaponId===weapon.id);return saved?{...saved,active:false,points:saved.trace||[],result:saved}:null;
   }
@@ -207,25 +189,26 @@
   function recoilShotOptions(weapon){const max=weapon.patternShots;return [5,10,15,20,30,40,50,75,100,125,150,max].filter((n,i,a)=>n>0&&n<=max&&a.indexOf(n)===i).sort((a,b)=>a-b);}
   function recoilSuggestions(metrics,weapon){
     const suggestions=[];
+    if(metrics.lateShots>0)suggestions.push(`有 ${metrics.lateShots} 发在发射时仍偏离目标（超过 ${recoilErrorThreshold} px）：提前在上一发结束前开始修正，不要等看到下一发再补。`);
     if(metrics.verticalError<-12)suggestions.push('后段下拉不足：从第 3～5 发就开始给鼠标持续向下的补偿。');
     if(metrics.verticalError>12)suggestions.push('下拉过早或过多：先只练前 10 发，让准星停在目标区再继续。');
     if(Math.abs(metrics.lateralError)>14)suggestions.push(metrics.lateralError>0?'整体偏右：左向修正还不够，先把横向摆动放小。':'整体偏左：右向修正过度，尝试只跟随参考线的转折。');
-    if(!suggestions.length)suggestions.push(`这轮形状已经接近参考线。${weapon.patternShots>10?'下一轮保持同一距离，增加到 '+Math.min(weapon.patternShots,20)+' 发。':'下一轮练习射击节奏与射后回掩体。'}`);
+    if(!suggestions.length)suggestions.push(`这轮逐发到点位置已经接近参考线。${weapon.patternShots>10?'下一轮保持同一距离，增加到 '+Math.min(weapon.patternShots,20)+' 发。':'下一轮继续练习每发之间的节奏。'}`);
     return suggestions;
   }
   function recoilSummary(){
-    const sessions=state.recoil.sessions,avg=sessions.length?sessions.reduce((sum,s)=>sum+s.score,0)/sessions.length:0,best=sessions.slice().sort((a,b)=>b.score-a.score)[0];
+    const sessions=state.recoil.sessions.filter(session=>supportedRecoilWeapons.has(session.weaponId)),avg=sessions.length?sessions.reduce((sum,s)=>sum+s.score,0)/sessions.length:0,best=sessions.slice().sort((a,b)=>b.score-a.score)[0];
     return `<div class="recoil-summary"><div><b>${sessions.length}</b><span>总记录</span></div><div><b>${sessions.length?avg.toFixed(0):'—'}</b><span>平均评分</span></div><div><b>${best?best.score.toFixed(0):'—'}</b><span>最高评分</span></div><div><b>${new Set(sessions.map(s=>s.weaponId)).size}</b><span>已练武器</span></div></div>`;
   }
   function recoilHistory(){
-    const sessions=state.recoil.sessions.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,8);
-    if(!sessions.length)return '<p class="empty-history">还没有压枪记录。选一把武器，按住画布从起点向下拖动。</p>';
-    return `<div class="recoil-history">${sessions.map(s=>{const w=weapons.find(item=>item.id===s.weaponId);return `<div class="recoil-history-item"><div class="history-top"><strong>${esc(w?.name||s.weaponId)}</strong><span class="score">${s.score.toFixed(0)} 分</span></div><p>${esc(s.date)} · ${s.shots} 发 · 平均误差 ${s.meanError.toFixed(1)} px</p></div>`;}).join('')}</div>`;
+    const sessions=state.recoil.sessions.filter(session=>supportedRecoilWeapons.has(session.weaponId)).slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,8);
+    if(!sessions.length)return '<p class="empty-history">还没有压枪记录。先点开始计时，再按住画布跟随逐发目标。</p>';
+    return `<div class="recoil-history">${sessions.map(s=>{const w=weapons.find(item=>item.id===s.weaponId);return `<div class="recoil-history-item"><div class="history-top"><strong>${esc(w?.name||s.weaponId)}</strong><span class="score">${s.score.toFixed(0)} 分</span></div><p>${esc(s.date)} · ${s.shots}/${s.targetShots||s.shots} 发 · 平均误差 ${s.meanError.toFixed(1)} px · 到点偏差 ${s.lateShots||0} 发</p></div>`;}).join('')}</div>`;
   }
   function recoilCanvasMarkup(weapon,shots){
-    const session=recoilViewSession(weapon),last=weapon.recoilType==='fixed'?session?.result:null;
-    const legend=weapon.recoilType==='fixed'?'<div class="recoil-legend"><span><i class="legend-dot"></i>参考路径 · 无散布后坐力</span><span><i class="legend-dot ideal"></i>理想补偿 · 反向路径</span><span><i class="legend-dot mine"></i>我的轨迹 · 实际记录</span></div>':`<div class="recoil-legend"><span><i class="legend-dot"></i>${esc(weapon.recoilType==='pellet'?'一次开火的弹丸示意':'射击后恢复示意')}</span><span>此类武器没有可背诵的固定全自动线</span></div>`;
-    return `<div class="recoil-chart-frame"><canvas id="recoil-canvas" width="760" height="460" aria-label="${esc(weapon.name)}训练示意"></canvas></div>${legend}${last?`<div class="recoil-result"><h3>本轮建议 · ${last.score.toFixed(0)} 分</h3><p>${recoilSuggestions(last,weapon).map(esc).join('<br>')}</p><div class="result-metrics"><div><b>${last.meanError.toFixed(1)} px</b><span>平均误差</span></div><div><b>${last.verticalError>0?'+':''}${last.verticalError.toFixed(1)}</b><span>纵向偏差</span></div><div><b>${last.lateralError>0?'+':''}${last.lateralError.toFixed(1)}</b><span>横向偏差</span></div></div></div>`:''}`;
+    const session=recoilViewSession(weapon),last=session?.result;
+    const legend='<div class="recoil-legend"><span><i class="legend-dot"></i>橙色：实际后坐力参考</span><span><i class="legend-dot ideal"></i>绿色：当前逐发补偿目标</span><span><i class="legend-dot mine"></i>青色：我的即时轨迹</span><span><i class="legend-dot miss"></i>红点：发射时偏差</span></div>';
+    return `<div class="recoil-chart-frame"><canvas id="recoil-canvas" width="760" height="460" aria-label="${esc(weapon.name)}逐发计时压枪训练画布"></canvas></div>${legend}${last?`<div class="recoil-result"><h3>本轮建议 · ${last.score.toFixed(0)} 分</h3><p>${recoilSuggestions(last,weapon).map(esc).join('<br>')}</p><div class="result-metrics"><div><b>${last.meanError.toFixed(1)} px</b><span>平均误差</span></div><div><b>${last.lateShots||0} 发</b><span>到点偏差</span></div><div><b>${(last.timingAccuracy??100).toFixed(0)}%</b><span>按时到位率</span></div><div><b>${last.verticalError>0?'+':''}${last.verticalError.toFixed(1)}</b><span>纵向偏差</span></div><div><b>${last.lateralError>0?'+':''}${last.lateralError.toFixed(1)}</b><span>横向偏差</span></div></div></div>`:''}`;
   }
   function chartGeometry(pattern,W,H){
     const points=pattern.flatMap(p=>[p,{x:-p.x,y:-p.y}]),xs=points.map(p=>p.x),ys=points.map(p=>p.y),minX=Math.min(0,...xs),maxX=Math.max(0,...xs),minY=Math.min(0,...ys),maxY=Math.max(0,...ys),rangeX=maxX-minX||1,rangeY=maxY-minY||1,scale=Math.min((W-90)/rangeX,(H-90)/rangeY,2.2);
@@ -236,33 +219,55 @@
     for(let x=40;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
     for(let y=20;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
   }
-  function drawRecoil(){
+  function requestRecoilFrame(callback){return globalThis.requestAnimationFrame?globalThis.requestAnimationFrame(callback):setTimeout(()=>callback(performance.now()),16);}
+  function cancelRecoilFrame(id){if(id===null)return;if(globalThis.cancelAnimationFrame)globalThis.cancelAnimationFrame(id);else clearTimeout(id);}
+  function stopRecoilAnimation(){if(recoilFrame!==null)cancelRecoilFrame(recoilFrame);recoilFrame=null;}
+  function idealRecoilPoint(session,index){const p=session.reference[index]||session.reference.at(-1)||{x:0,y:0};return {x:-p.x*session.scale,y:-p.y*session.scale};}
+  function recordRecoilShots(now){
+    const session=recoilSession;if(!session?.active||session.startedAt===null||now<session.startedAt)return;
+    while(session.currentShot<session.shots&&now>=session.startedAt+session.currentShot*session.intervalMs){
+      const shot=session.currentShot+1,deadline=session.startedAt+session.currentShot*session.intervalMs,expected=idealRecoilPoint(session,session.currentShot),actual={x:session.lastPoint.x,y:session.lastPoint.y},error=Math.hypot(actual.x-expected.x,actual.y-expected.y);
+      session.samples.push({shot,at:deadline,actual,expected,error,late:error>recoilErrorThreshold});session.currentShot++;
+    }
+    if(session.currentShot>=session.shots){session.running=false;session.completeAt=now;}
+  }
+  function recoilAnimationLoop(now){
+    const session=recoilSession;
+    if(!session?.active||session.startedAt===null){recoilFrame=null;return;}
+    recordRecoilShots(now);drawRecoil(now);
+    if(session.running&&session.currentShot<session.shots)recoilFrame=requestRecoilFrame(recoilAnimationLoop);else recoilFrame=null;
+  }
+  function startRecoilAnimation(){stopRecoilAnimation();recoilFrame=requestRecoilFrame(recoilAnimationLoop);}
+  function drawRecoil(now=performance.now()){
     const canvas=$('#recoil-canvas');if(!canvas)return;
-    const ctx=canvas.getContext('2d'),W=760,H=460,weapon=selectedWeapon();drawCanvasBackground(ctx,W,H);
-    ctx.font='12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
-    if(weapon.recoilType==='pellet'){
-      const center={x:W/2,y:H/2-8};ctx.strokeStyle='#8fa66b55';ctx.setLineDash([5,5]);ctx.beginPath();ctx.arc(center.x,center.y,118,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.strokeStyle='#8fa66b80';ctx.beginPath();ctx.moveTo(center.x-145,center.y);ctx.lineTo(center.x+145,center.y);ctx.moveTo(center.x,center.y-145);ctx.lineTo(center.x,center.y+145);ctx.stroke();
-      for(let i=0;i<weapon.pellets;i++){const angle=i*2.399963+(weapon.id==='xm1014'?.25:weapon.id==='mag7'?.58:1.05),radius=28+((i*37)%78),p={x:center.x+Math.cos(angle)*radius,y:center.y+Math.sin(angle)*radius};ctx.fillStyle='#ff955d';ctx.beginPath();ctx.arc(p.x,p.y,5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#f8c1a0';ctx.fillText(String(i+1),p.x+8,p.y-6);}
-      ctx.fillStyle='#c8dd91';ctx.fillText(`${weapon.name}：一次开火 = ${weapon.pellets} 枚弹丸`,16,28);ctx.fillStyle='#879685';ctx.fillText('圆圈只是散布范围示意，实际每次落点会随机变化',16,H-18);return;
-    }
-    if(weapon.recoilType!=='fixed'){
-      const center={x:W/2,y:H/2-12};ctx.strokeStyle='#c8dd9180';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(center.x-78,center.y);ctx.lineTo(center.x+78,center.y);ctx.moveTo(center.x,center.y-78);ctx.lineTo(center.x,center.y+78);ctx.stroke();ctx.fillStyle='#c8dd91';ctx.beginPath();ctx.arc(center.x,center.y,6,0,Math.PI*2);ctx.fill();ctx.fillStyle='#c8dd91';ctx.fillText(`${weapon.name}：${weapon.recoilType==='semi'?'半自动短段节奏':'单发 + 射后恢复'}`,16,28);ctx.fillStyle='#879685';ctx.fillText('这里不画一条假的固定弹道；距离、停身和射击间隔会改变实际结果',16,H-18);return;
-    }
-    const pattern=weaponPattern(weapon).slice(0,Math.min(recoilShots,weapon.patternShots)),session=recoilViewSession(weapon),geometry=chartGeometry(pattern,W,H),origin=geometry.origin,scale=geometry.scale;
-    ctx.strokeStyle='#8fa66b35';ctx.setLineDash([4,5]);ctx.beginPath();ctx.moveTo(origin.x,20);ctx.lineTo(origin.x,H-20);ctx.stroke();ctx.setLineDash([]);
-    ctx.fillStyle='#8a9a84';ctx.fillText('第 1 发起点',origin.x+10,origin.y-14);ctx.fillText(`${pattern.length} 发固定参照`,W-118,24);
-    const toBullet=p=>({x:origin.x+p.x*scale,y:origin.y+p.y*scale}),toIdeal=p=>({x:origin.x-p.x*scale,y:origin.y-p.y*scale});
-    const bullet=pattern.map(toBullet),ideal=pattern.map(toIdeal);
+    const ctx=canvas.getContext('2d'),W=760,H=460,weapon=selectedWeapon(),pattern=weaponPattern(weapon).slice(0,Math.min(recoilShots,weapon.patternShots)),session=recoilViewSession(weapon),reference=session?.reference?.length?session.reference:pattern,geometry=chartGeometry(reference,W,H),origin=geometry.origin,scale=session?.scale||geometry.scale;
+    drawCanvasBackground(ctx,W,H);ctx.font='12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
+    const toBullet=p=>({x:origin.x+p.x*scale,y:origin.y+p.y*scale}),toIdeal=p=>({x:origin.x-p.x*scale,y:origin.y-p.y*scale}),bullet=reference.map(toBullet),ideal=reference.map(toIdeal),active=!!session?.active,samples=active?(session.samples||[]):(session?.trace||[]).map((actual,index)=>({shot:index+1,actual,error:session?.shotErrors?.[index]||0,late:(session?.shotErrors?.[index]||0)>recoilErrorThreshold})),firedCount=samples.length;
     function path(points,color,width,dash=[]){if(!points.length)return;ctx.save();ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineJoin='round';ctx.lineCap='round';ctx.setLineDash(dash);ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);points.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));ctx.stroke();ctx.restore();}
-    path(bullet,'#ff955d',2.5);path(ideal,'#c8dd91',2,[7,5]);
-    bullet.forEach((p,i)=>{ctx.fillStyle='#ff955d';ctx.beginPath();ctx.arc(p.x,p.y,i===0?5:3.5,0,Math.PI*2);ctx.fill();if(i===0||i%5===4){ctx.fillStyle='#f8c1a0';ctx.font='10px ui-monospace,monospace';ctx.fillText(String(i+1),p.x+7,p.y-6);}});
-    if(session?.points?.length){const mine=session.points.map(p=>({x:origin.x+p.x,y:origin.y+p.y}));path(mine,'#70d6d2',3);mine.forEach((p,i)=>{if(i===0||i===mine.length-1){ctx.fillStyle='#70d6d2';ctx.beginPath();ctx.arc(p.x,p.y,5,0,Math.PI*2);ctx.fill();}});}
-    ctx.fillStyle='#879685';ctx.font='12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';ctx.fillText('向下拖动鼠标，模拟反向补偿',16,H-18);ctx.fillText('无散布逐发参考 · 实际命中仍受散布影响',W-244,H-18);
+    ctx.strokeStyle='#8fa66b35';ctx.setLineDash([4,5]);ctx.beginPath();ctx.moveTo(origin.x,20);ctx.lineTo(origin.x,H-20);ctx.stroke();ctx.setLineDash([]);
+    path(bullet,active?'#ff955d38':'#ff955d',active?2:2.5);
+    const idealCount=active?Math.min(reference.length,Math.max(1,(session.currentShot||0)+1)):reference.length;
+    path(ideal.slice(0,idealCount),active?'#c8dd91':'#c8dd91',2,[7,5]);
+    bullet.forEach((p,i)=>{ctx.fillStyle=active&&i>=firedCount?'#ff955d48':'#ff955d';ctx.beginPath();ctx.arc(p.x,p.y,i===0?5:3.5,0,Math.PI*2);ctx.fill();if(!active&&(i===0||i%5===4)){ctx.fillStyle='#f8c1a0';ctx.font='10px ui-monospace,monospace';ctx.fillText(String(i+1),p.x+7,p.y-6);}});
+    if(session?.points?.length){const mine=session.points.map(p=>({x:origin.x+p.x,y:origin.y+p.y}));path(mine,'#70d6d2',3);const last=mine.at(-1);if(last){ctx.fillStyle='#70d6d2';ctx.beginPath();ctx.arc(last.x,last.y,5,0,Math.PI*2);ctx.fill();}}
+    if(samples.length){samples.forEach(sample=>{const p={x:origin.x+sample.actual.x,y:origin.y+sample.actual.y};ctx.fillStyle=sample.late?'#ff6b5b':'#70d6d2';ctx.beginPath();ctx.arc(p.x,p.y,sample.late?5:4,0,Math.PI*2);ctx.fill();ctx.fillStyle=sample.late?'#ffb0a6':'#b6ece5';ctx.font='10px ui-monospace,monospace';ctx.fillText(String(sample.shot),p.x+7,p.y-6);});}
+    if(active&&session.startedAt!==null){
+      const ready=now<session.startedAt;
+      if(ready){ctx.fillStyle='#c8dd91';ctx.fillText(`准备中 · ${(session.startedAt-now).toFixed(0)} ms 后第 1 发`,16,28);}
+      else if(session.currentShot<session.shots){
+        const index=session.currentShot,base=index?ideal[index-1]:{x:origin.x,y:origin.y},target=ideal[index],elapsed=now-(session.startedAt+index*session.intervalMs),progress=Math.max(0,Math.min(1,elapsed/session.intervalMs)),moving={x:base.x+(target.x-base.x)*progress,y:base.y+(target.y-base.y)*progress};
+        ctx.strokeStyle='#c8dd91aa';ctx.lineWidth=2;ctx.beginPath();ctx.arc(moving.x,moving.y,10+Math.sin(now/90)*2,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#c8dd91';ctx.beginPath();ctx.arc(moving.x,moving.y,3,0,Math.PI*2);ctx.fill();ctx.fillText(`第 ${index+1} 发目标 · ${(session.intervalMs*(1-progress)).toFixed(0)} ms`,moving.x+12,moving.y-8);
+      }
+    }
+    ctx.fillStyle='#c8dd91';ctx.font='12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';ctx.fillText(`${weapon.name} · ${weapon.fireRate} RPM · 每发 ${recoilInterval(weapon).toFixed(0)} ms`,16,active?48:28);ctx.textAlign='right';ctx.fillStyle='#8a9a84';ctx.fillText(`${firedCount} / ${reference.length} 发`,W-16,28);ctx.textAlign='left';ctx.fillStyle='#879685';ctx.fillText(active?'绿圈是当前目标；到点时目标未跟上就会记为偏差':'点击“开始计时训练”，再按住画布跟随绿色逐发目标',16,H-18);ctx.textAlign='right';ctx.fillText('无散布参考 · 实际命中仍受散布影响',W-16,H-18);ctx.textAlign='left';
   }
   function recoil(){
-    const weapon=selectedWeapon(),options=recoilShotOptions(weapon),fixed=weapon.recoilType==='fixed'&&options.length;if(fixed&&!options.includes(recoilShots))recoilShots=options[options.length-1];const pattern=weaponPattern(weapon),last=fixed&&recoilSession&&recoilSession.weaponId===weapon.id?recoilSession:null;
-    const controls=fixed?`<div class="recoil-controls"><label>训练弹数<select id="recoil-shots" aria-label="训练弹数">${options.map(n=>`<option value="${n}" ${n===recoilShots?'selected':''}>前 ${n} 发</option>`).join('')}</select></label><button class="primary" id="recoil-start">${last?.active?'请在图上拖动…':'开始记录压枪'}</button>${last?.active?'<button class="secondary" id="recoil-finish">松开并保存</button>':'<button class="secondary" id="recoil-clear">清除本轮</button>'}</div><div class="recoil-instruction"><strong>动作：</strong>点击“开始记录”后，在画布任意位置按住鼠标，从橙色起点的方向向下拖动；松开后会把轨迹重采样到当前弹数。先做前 10 发，稳定后再延长。这里比较的是无散布后坐力的形状，实际游戏还要考虑站姿、距离与散布。</div>`:`<div class="recoil-controls"><span class="tiny">当前训练：${esc(weaponMechanicLabel(weapon))}</span></div><div class="recoil-instruction"><strong>为什么没有固定压枪线：</strong>${esc(weapon.recoilType==='pellet'?'霰弹枪一次开火包含多枚弹丸，落点由散布决定；请练停身、瞄准中心、开火后转移。':weapon.recoilType==='semi'?'半自动狙击枪每次扣扳机，射击间隔与恢复状态都会影响结果；请练短段点击与回掩体。':'手枪或栓动狙击枪没有可连续背诵的全自动弹道；请练首枪、点击间隔与射后恢复。')}</div>`;
-    return `<div class="lab-hero"><div><p class="eyebrow">RECOIL LAB / WEAPON CONTROL</p><h2>把每把枪的真实机制，练成可复现的动作。</h2><p>自动武器显示逐发无散布后坐力参考线，并把你的反向补偿轨迹单独记录；霰弹枪、手枪和单发 / 半自动狙击枪则显示真实的散布或恢复训练，不再用假的长曲线冒充弹道。</p></div><div class="lab-stat-stack"><div class="lab-stat"><strong>${weapons.length}</strong><span>可训练武器</span></div><div class="lab-stat"><strong>${state.recoil.sessions.length}</strong><span>压枪记录</span></div></div></div><div class="recoil-layout"><aside class="panel weapon-panel"><div class="section-head"><h2>选择武器</h2><span class="tiny">${weapons.length} 把</span></div><input class="weapon-search" id="recoil-search" type="search" placeholder="搜索 AK、咖喱、AWP…" aria-label="搜索武器" value="${esc(recoilQuery)}"><div class="weapon-filters">${recoilCategories.map(c=>`<button class="weapon-filter ${recoilCategory===c?'active':''}" data-recoil-filter="${c}">${c}</button>`).join('')}</div><p class="weapon-count">显示 ${weapons.filter(w=>(recoilCategory==='全部'||w.category===recoilCategory)&&(!recoilQuery.trim()||`${w.name} ${w.alias} ${w.category}`.toLowerCase().includes(recoilQuery.trim().toLowerCase()))).length} 把</p><div class="weapon-list" id="weapon-list">${recoilList()}</div></aside><section class="panel recoil-main"><div class="weapon-heading"><div><p class="eyebrow">${esc(weapon.category)} / ${esc(weapon.difficulty)}</p><h2>${esc(weapon.name)}</h2><p>${esc(weapon.note)}</p></div><span class="weapon-tag">${esc(weaponAmmoLabel(weapon))} · ${esc(weaponMechanicLabel(weapon))}</span></div>${recoilCanvasMarkup(weapon,recoilShots)}${controls}</section><aside class="panel recoil-side"><div class="section-head"><h2>训练概览</h2><span class="tiny">本地保存</span></div>${recoilSummary()}<div class="section-head"><h2>最近记录</h2></div>${recoilHistory()}<div class="chart-note"><strong>数据口径：</strong>弹匣容量与补给按 CS2 当前武器数据；固定线是逐发后坐力 / 补偿增量转换后的标准化路径，不是网页像素，也不是带散布的每颗子弹保证落点。<br><a href="https://www.counter-strike.net/newsentry/532126482488623360" target="_blank" rel="noreferrer">查看 Valve 2026-03-18 弹药机制更新 ↗</a> · <a href="https://csdb.gg/recoil-patterns/" target="_blank" rel="noreferrer">逐发弹道参考 ↗</a> · <a href="https://github.com/SteamTracking/GameTracking-CS2/blob/master/DumpSource2/schemas/server/CBasePlayerWeaponVData.h" target="_blank" rel="noreferrer">武器字段 ↗</a></div></aside></div>`;
+    const weapon=selectedWeapon(),options=recoilShotOptions(weapon),fixed=weaponPattern(weapon).length>0;
+    if(fixed&&!options.includes(recoilShots))recoilShots=options[options.length-1];
+    const session=recoilSession?.weaponId===weapon.id?recoilSession:null;
+    const action=session?.active?(session.startedAt===null?'按住画布开始':session.running?'计时进行中…':session.currentShot>=session.shots?'已发完，松开评分':'继续按住画布'): '开始计时训练';
+    const controls=fixed?`<div class="recoil-controls"><label>训练弹数<select id="recoil-shots" aria-label="训练弹数">${options.map(n=>`<option value="${n}" ${n===recoilShots?'selected':''}>前 ${n} 发</option>`).join('')}</select></label><span class="timing-badge">${weapon.fireRate} RPM · 每发 ${recoilInterval(weapon).toFixed(0)} ms</span><button class="primary" id="recoil-start">${action}</button>${session?.active?'<button class="secondary" id="recoil-finish">结束并评分</button>':'<button class="secondary" id="recoil-clear">清除本轮</button>'}</div><div class="recoil-instruction"><strong>操作：</strong>先点“开始计时训练”，再按住画布。按住后会短暂准备，随后按当前枪械 RPM 逐发计时；每一发到点时，系统读取你当下的位置。如果绿色目标还没到位，这一发就按发射瞬间的偏差计分。松开鼠标或点击“结束并评分”后保存。建议先练前 10 发，再逐步增加。</div>`:`<div class="recoil-controls"><span class="tiny">当前训练：${esc(weaponMechanicLabel(weapon))}</span></div><div class="recoil-instruction"><strong>当前页面只保留可连续扫射武器：</strong>狙击枪、点射 / 单发手枪和霰弹枪已移出，避免用一条不适用的固定曲线误导训练。</div>`;
+    return `<div class="lab-hero"><div><p class="eyebrow">RECOIL LAB / WEAPON CONTROL</p><h2>让每一发都赶在下一发之前到位。</h2><p>这里只练可连续扫射的步枪、冲锋枪和机枪。训练按每把枪的射速逐发播放：到点就记录你的即时位置，来不及完成补偿的子弹会留下红点并进入建议。</p></div><div class="lab-stat-stack"><div class="lab-stat"><strong>${weapons.length}</strong><span>可训练自动武器</span></div><div class="lab-stat"><strong>${state.recoil.sessions.length}</strong><span>压枪记录</span></div></div></div><div class="recoil-layout"><aside class="panel weapon-panel"><div class="section-head"><h2>选择武器</h2><span class="tiny">${weapons.length} 把</span></div><input class="weapon-search" id="recoil-search" type="search" placeholder="搜索 AK、咖喱、M4…" aria-label="搜索武器" value="${esc(recoilQuery)}"><div class="weapon-filters">${recoilCategories.map(c=>`<button class="weapon-filter ${recoilCategory===c?'active':''}" data-recoil-filter="${c}">${c}</button>`).join('')}</div><p class="weapon-count">显示 ${weapons.filter(w=>(recoilCategory==='全部'||w.category===recoilCategory)&&(!recoilQuery.trim()||`${w.name} ${w.alias} ${w.category}`.toLowerCase().includes(recoilQuery.trim().toLowerCase()))).length} 把</p><div class="weapon-list" id="weapon-list">${recoilList()}</div></aside><section class="panel recoil-main"><div class="weapon-heading"><div><p class="eyebrow">${esc(weapon.category)} / ${esc(weapon.difficulty)}</p><h2>${esc(weapon.name)}</h2><p>${esc(weapon.note)}</p></div><span class="weapon-tag">${esc(weaponAmmoLabel(weapon))} · ${esc(weaponMechanicLabel(weapon))}</span></div>${recoilCanvasMarkup(weapon,recoilShots)}${controls}</section><aside class="panel recoil-side"><div class="section-head"><h2>训练概览</h2><span class="tiny">本地保存</span></div>${recoilSummary()}<div class="section-head"><h2>最近记录</h2></div>${recoilHistory()}<div class="chart-note"><strong>数据口径：</strong>参考数据按当前 CS2 的逐发后坐力机制整理，按弹匣长度逐发保存；画布展示的是无散布参考路径和你的发射时坐标，不是带随机散布的命中保证。射速用于动画节拍，站姿、移动、距离、开镜状态和散布仍会改变游戏内实际落点。<br><a href="https://www.counter-strike.net/newsentry/532126482488623360" target="_blank" rel="noreferrer">Valve 弹药机制更新 ↗</a> · <a href="https://csdb.gg/recoil-patterns/" target="_blank" rel="noreferrer">逐发后坐力参考 ↗</a> · <a href="https://github.com/SteamTracking/GameTracking-CS2/blob/master/DumpSource2/schemas/server/CBasePlayerWeaponVData.h" target="_blank" rel="noreferrer">GameTracking 武器字段 ↗</a></div></aside></div>`;
   }
   function stopAimClock(){clearInterval(aimInterval);aimInterval=null;}
   function setAimTarget(){if(!aimSession)return;aimSession.target=aimTargetPosition();aimSession.targetAt=performance.now();const target=$('.aim-target');if(target){target.style.left=`${aimSession.target.left}%`;target.style.top=`${aimSession.target.top}%`;}}
@@ -282,22 +287,16 @@
     const reaction=session.reactionTimes.length?session.reactionTimes.reduce((sum,n)=>sum+n,0)/session.reactionTimes.length:0,result={id:globalThis.crypto?.randomUUID?.()||`aim-${Date.now()}`,date:today(),candidate:session.candidateId,label:session.candidate.name,dpi:session.candidate.dpi,sens:session.candidate.sens,zoom:session.candidate.zoom,hits:session.hits,attempts:session.attempts,accuracy:session.hits/session.attempts*100,reaction};
     const profile=profileFor(session.mode);profile.tests.unshift(result);profile.tests=profile.tests.slice(0,500);session.result=result;save();render();toast(`本轮完成：${result.accuracy.toFixed(0)}% 命中，已保存。`);
   }
-  function resamplePath(points,total){
-    if(!points.length)return [];
-    if(points.length===1)return Array.from({length:total},()=>({...points[0]}));
-    return Array.from({length:total},(_,i)=>{const index=Math.round(i*(points.length-1)/(total-1));return {...points[index]};});
-  }
   function canvasPoint(event,canvas){const rect=canvas.getBoundingClientRect();return {x:(event.clientX-rect.left)*(canvas.width/rect.width),y:(event.clientY-rect.top)*(canvas.height/rect.height)};}
   function finishRecoil(){
     if(!recoilSession?.active)return;
-    if(recoilSession.points.length<3){toast('轨迹太短，请按住画布拖动一段再保存。');return;}
-    const weapon=weapons.find(w=>w.id===recoilSession.weaponId)||selectedWeapon();if(weapon.recoilType!=='fixed'){recoilSession=null;render();toast('这把枪没有固定全自动参考线，不保存虚假的压枪评分。');return;}
-    const reference=weaponPattern(weapon).slice(0,Math.min(recoilSession.shots,weapon.patternShots)),geometry=chartGeometry(reference,760,460),actual=resamplePath(recoilSession.points,reference.length),ideal=reference.map(p=>({x:-p.x*geometry.scale,y:-p.y*geometry.scale}));
-    const errors=actual.map((p,i)=>Math.hypot(p.x-ideal[i].x,p.y-ideal[i].y)),meanError=errors.reduce((sum,n)=>sum+n,0)/errors.length,verticalError=actual.reduce((sum,p,i)=>sum+p.y-ideal[i].y,0)/actual.length,lateralError=actual.reduce((sum,p,i)=>sum+p.x-ideal[i].x,0)/actual.length,idealLength=Math.hypot(ideal.at(-1)?.x||0,ideal.at(-1)?.y||0),actualLength=Math.hypot(actual.at(-1)?.x||0,actual.at(-1)?.y||0),coverage=idealLength?actualLength/idealLength:1,score=Math.max(0,Math.min(100,100-meanError*.55-Math.abs(1-coverage)*18));
-    const result={id:globalThis.crypto?.randomUUID?.()||`recoil-${Date.now()}`,date:today(),weaponId:weapon.id,shots:recoilSession.shots,score,meanError,verticalError,lateralError,trace:actual};state.recoil.sessions.unshift(result);state.recoil.sessions=state.recoil.sessions.slice(0,2000);recoilSession={active:false,weaponId:weapon.id,shots:recoilSession.shots,points:actual,result};save();render();toast(`${weapon.name} 本轮 ${score.toFixed(0)} 分，建议已生成。`);
+    const session=recoilSession,now=performance.now();recordRecoilShots(now);stopRecoilAnimation();
+    if(session.samples.length<3){recoilSession=null;render();toast(`本轮只完成 ${session.samples.length} 发，至少完成 3 发后才会评分。`);return;}
+    const weapon=weapons.find(w=>w.id===session.weaponId)||selectedWeapon(),samples=session.samples.slice(),actual=samples.map(sample=>sample.actual),errors=samples.map(sample=>sample.error),meanError=errors.reduce((sum,n)=>sum+n,0)/errors.length,verticalError=samples.reduce((sum,sample)=>sum+sample.actual.y-sample.expected.y,0)/samples.length,lateralError=samples.reduce((sum,sample)=>sum+sample.actual.x-sample.expected.x,0)/samples.length,lateShots=samples.filter(sample=>sample.error>recoilErrorThreshold).length,timingAccuracy=(samples.length-lateShots)/samples.length*100,idealLength=Math.hypot(samples.at(-1).expected.x,samples.at(-1).expected.y),actualLength=Math.hypot(samples.at(-1).actual.x,samples.at(-1).actual.y),coverage=idealLength?actualLength/idealLength:1,score=Math.max(0,Math.min(100,100-meanError*.55-(lateShots/samples.length)*20-Math.abs(1-coverage)*18));
+    const result={id:globalThis.crypto?.randomUUID?.()||`recoil-${Date.now()}`,date:today(),weaponId:weapon.id,shots:samples.length,targetShots:session.shots,score,meanError,verticalError,lateralError,lateShots,timingAccuracy,shotErrors:errors,trace:actual};state.recoil.sessions.unshift(result);state.recoil.sessions=state.recoil.sessions.slice(0,2000);recoilSession={active:false,weaponId:weapon.id,shots:samples.length,targetShots:session.shots,points:actual,samples,result};save();render();toast(`${weapon.name} 本轮 ${score.toFixed(0)} 分，${lateShots} 发到点偏差，建议已生成。`);
   }
   function startRecoilRecord(){
-    const weapon=selectedWeapon();if(weapon.recoilType!=='fixed'){toast('这把枪使用散布 / 单发恢复训练，没有固定压枪评分。');return;}recoilSession={active:true,weaponId:weapon.id,shots:recoilShots,points:[],pointerId:null,drawing:false,result:null};render();
+    const weapon=selectedWeapon(),shots=Math.min(recoilShots,weapon.patternShots),reference=weaponPattern(weapon).slice(0,shots),geometry=chartGeometry(reference,760,460);if(!reference.length){toast('这把武器没有可用的逐发参考数据。');return;}stopRecoilAnimation();recoilSession={active:true,running:false,weaponId:weapon.id,shots,reference,scale:geometry.scale,intervalMs:recoilInterval(weapon),startedAt:null,currentShot:0,completeAt:null,samples:[],points:[],lastPoint:{x:0,y:0},pointerId:null,drawing:false,result:null};render();
   }
   function updateSensitivityMetrics(){
     const p=profileFor(state.sensitivity.active),eDpi=p.dpi*p.sens;
@@ -307,7 +306,7 @@
   function render(){
     const parts=location.hash.slice(1).split('/');route=parts[0]||'dashboard';
     if(route!=='sensitivity'&&aimSession?.running){stopAimClock();aimSession=null;}
-    if(route!=='recoil'&&recoilSession?.active)recoilSession=null;
+    if(route!=='recoil'&&recoilSession?.active){stopRecoilAnimation();recoilSession=null;}
     const nav=route==='chapter'?'library':route,labels={dashboard:'训练台',library:'学习手册',plan:'八周计划',journal:'复盘日志',sensitivity:'灵敏度实验室',recoil:'压枪训练'};
     $('#page-label').textContent=labels[nav]||'训练台';$$('[data-nav]').forEach(a=>{a.classList.toggle('active',a.dataset.nav===nav);if(a.dataset.nav===nav)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
     const html=route==='library'?library():route==='chapter'?reader(parts[1]):route==='plan'?plan():route==='journal'?journal():route==='sensitivity'?sensitivity():route==='recoil'?recoil():dashboard();
@@ -329,12 +328,12 @@
     if(t.dataset.aimStart){startAimTest(t.dataset.aimStart);return;}
     if(t.id==='aim-stop'){finishAimTest(false);return;}
     if(t.dataset.recoilFilter){
-      recoilCategory=t.dataset.recoilFilter;const first=weapons.find(w=>(recoilCategory==='全部'||w.category===recoilCategory)&&(!recoilQuery.trim()||`${w.name} ${w.alias} ${w.category}`.toLowerCase().includes(recoilQuery.trim().toLowerCase())));if(first)recoilWeaponId=first.id;recoilSession=null;render();return;
+      recoilCategory=t.dataset.recoilFilter;const first=weapons.find(w=>(recoilCategory==='全部'||w.category===recoilCategory)&&(!recoilQuery.trim()||`${w.name} ${w.alias} ${w.category}`.toLowerCase().includes(recoilQuery.trim().toLowerCase())));if(first)recoilWeaponId=first.id;stopRecoilAnimation();recoilSession=null;render();return;
     }
-    if(t.dataset.recoilWeapon){recoilWeaponId=t.dataset.recoilWeapon;recoilSession=null;render();return;}
+    if(t.dataset.recoilWeapon){recoilWeaponId=t.dataset.recoilWeapon;stopRecoilAnimation();recoilSession=null;render();return;}
     if(t.id==='recoil-start'){if(!recoilSession?.active)startRecoilRecord();return;}
     if(t.id==='recoil-finish'){finishRecoil();return;}
-    if(t.id==='recoil-clear'){recoilSession=null;render();return;}
+    if(t.id==='recoil-clear'){stopRecoilAnimation();recoilSession=null;render();return;}
     if(t.id==='backup-open'||t.id==='journal-backup')$('#backup-dialog').showModal();
     if(t.id==='backup-close')$('#backup-dialog').close();if(t.id==='export-data')backup();
     if(t.id==='timer-toggle')toggleTimer();if(t.id==='timer-reset'){stopTimer();remaining=total;timerUI();}
@@ -350,10 +349,10 @@
     const aimBoard=e.target.closest?.('#aim-board');
     if(aimBoard&&aimSession?.running){const hit=!!e.target.closest('.aim-target');aimSession.attempts++;if(hit){aimSession.hits++;aimSession.reactionTimes.push(performance.now()-aimSession.targetAt);setAimTarget();}updateAimLive();e.preventDefault();return;}
     const canvas=e.target.closest?.('#recoil-canvas');
-    if(canvas&&recoilSession?.active){const point=canvasPoint(e,canvas);recoilSession.pointerId=e.pointerId;recoilSession.drawing=true;recoilSession.start=point;recoilSession.points=[{x:0,y:0}];try{canvas.setPointerCapture(e.pointerId);}catch{}drawRecoil();e.preventDefault();}
+    if(canvas&&recoilSession?.active&&!recoilSession.drawing){const point=canvasPoint(e,canvas),session=recoilSession;session.pointerId=e.pointerId;session.drawing=true;session.start=point;session.points=[{x:0,y:0}];session.lastPoint={x:0,y:0};if(session.startedAt===null){session.startedAt=performance.now()+recoilReadyDelay;session.running=true;session.currentShot=0;session.samples=[];}startRecoilAnimation();try{canvas.setPointerCapture(e.pointerId);}catch{}drawRecoil();e.preventDefault();}
   });
   document.addEventListener('pointermove',e=>{
-    if(!recoilSession?.active||!recoilSession.drawing||recoilSession.pointerId!==e.pointerId)return;const canvas=$('#recoil-canvas');if(!canvas)return;const point=canvasPoint(e,canvas),next={x:point.x-recoilSession.start.x,y:point.y-recoilSession.start.y},last=recoilSession.points[recoilSession.points.length-1];if(Math.hypot(next.x-last.x,next.y-last.y)>1){recoilSession.points.push(next);drawRecoil();}e.preventDefault();
+    if(!recoilSession?.active||!recoilSession.drawing||recoilSession.pointerId!==e.pointerId)return;const canvas=$('#recoil-canvas');if(!canvas)return;const point=canvasPoint(e,canvas),next={x:point.x-recoilSession.start.x,y:point.y-recoilSession.start.y},last=recoilSession.points.at(-1)||recoilSession.lastPoint;recoilSession.lastPoint=next;if(Math.hypot(next.x-last.x,next.y-last.y)>1){recoilSession.points.push(next);drawRecoil();}e.preventDefault();
   });
   document.addEventListener('pointerup',e=>{if(recoilSession?.active&&recoilSession.drawing&&recoilSession.pointerId===e.pointerId){recoilSession.drawing=false;recoilSession.pointerId=null;finishRecoil();}});
   document.addEventListener('pointercancel',e=>{if(recoilSession?.active&&recoilSession.pointerId===e.pointerId){recoilSession.drawing=false;recoilSession.pointerId=null;finishRecoil();}});
@@ -363,7 +362,7 @@
     if(t.matches('[data-check]')){state.checks[t.dataset.check]=t.checked;save();}
     if(t.id==='timer-length'){stopTimer();total=Number(t.value);remaining=total;timerUI();}
     if(t.id==='log-filter'){logFilter=t.value;$('#log-list').innerHTML=logCards();}
-    if(t.id==='recoil-shots'){recoilShots=Number(t.value);if(recoilSession?.active)recoilSession=null;render();}
+    if(t.id==='recoil-shots'){recoilShots=Number(t.value);if(recoilSession?.active)stopRecoilAnimation();recoilSession=null;render();}
     if(t.id==='import-data'){
       const file=t.files?.[0];if(!file)return;
       try{
