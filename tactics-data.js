@@ -67,20 +67,6 @@ window.CS2_TACTICS_DATA = {
       trigger: '接触地面后点燃',
       effect: '在落点附近铺开火焰并持续造成伤害；烟雾可以熄灭火焰，火焰会受地面与碰撞影响。',
       color: '#ff9a62'
-    },
-    {
-      id: 'decoy',
-      short: '诱',
-      icon: '◌',
-      name: '诱饵弹',
-      className: 'weapon_decoy',
-      perPlayer: 1,
-      teamMax: 5,
-      duration: '约 15 秒声音周期',
-      durationSeconds: 15,
-      trigger: '落地后开始播放',
-      effect: '模拟当前持有武器的枪声并制造误导；它不产生烟、火或闪光效果。',
-      color: '#b39be8'
     }
   ],
   maps: [
@@ -102,8 +88,7 @@ window.CS2_TACTICS_DATA = {
         { id: 'd2-a-smoke', utility: 'smoke', label: 'A 区烟雾', x: 78, y: 21, r: 8 },
         { id: 'd2-a-fire', utility: 'fire', label: 'A 区火焰', x: 77, y: 25, rx: 8, ry: 5 },
         { id: 'd2-mid-flash', utility: 'flash', label: '中路闪光', x: 48, y: 35, r: 16, angle: 180 },
-        { id: 'd2-mid-he', utility: 'he', label: '中路 HE', x: 47, y: 42, r: 9 },
-        { id: 'd2-b-decoy', utility: 'decoy', label: 'B 洞诱饵', x: 24, y: 23, r: 7 }
+        { id: 'd2-mid-he', utility: 'he', label: '中路 HE', x: 47, y: 42, r: 9 }
       ],
       lineups: [
         {
@@ -166,8 +151,7 @@ window.CS2_TACTICS_DATA = {
         { id: 'mirage-jungle-smoke', utility: 'smoke', label: 'Jungle 烟', x: 48, y: 66, r: 7 },
         { id: 'mirage-a-fire', utility: 'fire', label: 'A 默认火', x: 55, y: 75, rx: 8, ry: 5 },
         { id: 'mirage-mid-flash', utility: 'flash', label: '中路闪光', x: 44, y: 46, r: 15, angle: 90 },
-        { id: 'mirage-mid-he', utility: 'he', label: '中路 HE', x: 39, y: 43, r: 9 },
-        { id: 'mirage-b-decoy', utility: 'decoy', label: 'B 区诱饵', x: 25, y: 27, r: 7 }
+        { id: 'mirage-mid-he', utility: 'he', label: '中路 HE', x: 39, y: 43, r: 9 }
       ],
       lineups: [
         {
@@ -250,8 +234,7 @@ window.CS2_TACTICS_DATA = {
         { id: 'inferno-ct-smoke', utility: 'smoke', label: 'CT 烟', x: 72, y: 35, r: 7 },
         { id: 'inferno-b-fire', utility: 'fire', label: 'B 点火焰', x: 52, y: 25, rx: 8, ry: 5 },
         { id: 'inferno-banana-flash', utility: 'flash', label: '香蕉闪光', x: 47, y: 39, r: 15, angle: 20 },
-        { id: 'inferno-banana-he', utility: 'he', label: '香蕉 HE', x: 41, y: 42, r: 9 },
-        { id: 'inferno-ct-decoy', utility: 'decoy', label: 'CT 诱饵', x: 88, y: 35, r: 7 }
+        { id: 'inferno-banana-he', utility: 'he', label: '香蕉 HE', x: 41, y: 42, r: 9 }
       ],
       lineups: [
         {
