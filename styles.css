@@ -196,6 +196,7 @@
 .map-marker text{dominant-baseline:central}
 .map-marker-spawn-ct{fill:#93d9ff}.map-marker-spawn-t{fill:#ffbf7c}.map-marker-bomb-a,.map-marker-bomb-b{fill:#fff2b0}
 .map-marker-bomb-a circle,.map-marker-bomb-b circle{fill:#ff955d;stroke:#fff1c2}
+.map-overlay .tactic-player-marker{pointer-events:all;cursor:grab}.map-overlay .tactic-player-marker:active{cursor:grabbing}.tactic-player-marker circle{fill:var(--player-color);stroke:#071009;stroke-width:.7;filter:drop-shadow(0 0 1.5px #071009)}.tactic-player-marker:hover circle{stroke:#fff2cf;stroke-width:1}.tactic-player-marker text{font-size:2.5px;fill:#071009;font-weight:800;text-anchor:middle;dominant-baseline:central;pointer-events:none}.key-dot.player-ct{background:#8ad7fa}.key-dot.player-t{background:#ffbf7c}
 .tactic-lineup-route path{fill:none;stroke:#c8dd91;stroke-width:.8;stroke-dasharray:2 1.2;filter:drop-shadow(0 0 1px #111)}
 .tactic-lineup-route circle{stroke:#121a10;stroke-width:.7}.tactic-lineup-route .route-from{fill:#ff955d}.tactic-lineup-route .route-target{fill:#c8dd91}
 .tactic-lineup-route text{font-size:2.8px;fill:#f4ffd9;paint-order:stroke;stroke:#0b100c;stroke-width:.8px;stroke-linejoin:round;dominant-baseline:central}
