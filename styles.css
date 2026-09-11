@@ -136,9 +136,12 @@
 .recoil-history{display:grid;gap:9px}
 .recoil-history-item{padding:11px 0;border-bottom:1px solid var(--line);font-size:.76rem}
 .recoil-history-item:last-child{border-bottom:0}
-.recoil-history-item .history-top{display:flex;justify-content:space-between;gap:8px}
+.recoil-history-item .history-top{display:flex;justify-content:space-between;gap:8px;align-items:center}
 .recoil-history-item strong{font-weight:550}
 .recoil-history-item .score{color:var(--green);font-weight:600;font-variant-numeric:tabular-nums}
+.recoil-history-item .history-actions{display:flex;align-items:center;gap:9px;flex-shrink:0}
+.recoil-history-delete{padding:3px 0;background:transparent;color:#9b7768;font-size:.67rem}
+.recoil-history-delete:hover{color:#ff9b76;text-decoration:underline;text-underline-offset:3px}
 .recoil-history-item p{color:var(--muted);font-size:.69rem;line-height:1.6;margin:4px 0 0}
 .weapon-count{font-size:.7rem;color:var(--muted);margin:3px 0 10px}
 .legend-dot.miss{width:10px;height:10px;border-radius:50%;background:#ff6b5b}
