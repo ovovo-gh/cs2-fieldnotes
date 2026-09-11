@@ -234,7 +234,9 @@
   }
   function recoilViewSession(weapon){
     if(recoilSession&&recoilSession.weaponId===weapon.id)return recoilSession;
-    const saved=state.recoil.sessions.find(item=>item.weaponId===weapon.id);return saved?{...saved,active:false,points:saved.trace||[],result:saved}:null;
+    const saved=state.recoil.sessions.find(item=>item.weaponId===weapon.id);if(!saved)return null;
+    const targetShots=Math.min(saved.targetShots||saved.shots||recoilShots,weapon.patternShots),reference=weaponPattern(weapon).slice(0,targetShots),geometry=chartGeometry(reference,760,460);
+    return {...saved,active:false,reference,scale:geometry.scale,points:(saved.trace||[]).slice(0,reference.length),result:saved};
   }
   function recoilList(){
     const list=weapons.filter(w=>(recoilCategory==='全部'||w.category===recoilCategory)&&(!recoilQuery.trim()||`${w.name} ${w.alias} ${w.category}`.toLowerCase().includes(recoilQuery.trim().toLowerCase())));
@@ -296,7 +298,7 @@
     const canvas=$('#recoil-canvas');if(!canvas)return;
     const ctx=canvas.getContext('2d'),W=760,H=460,weapon=selectedWeapon(),pattern=weaponPattern(weapon).slice(0,Math.min(recoilShots,weapon.patternShots)),session=recoilViewSession(weapon),reference=session?.reference?.length?session.reference:pattern,geometry=chartGeometry(reference,W,H),origin=geometry.origin,scale=session?.scale||geometry.scale;
     drawCanvasBackground(ctx,W,H);ctx.font='12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
-    const toBullet=p=>({x:origin.x+p.x*scale,y:origin.y+p.y*scale}),toIdeal=p=>({x:origin.x-p.x*scale,y:origin.y-p.y*scale}),bullet=reference.map(toBullet),ideal=reference.map(toIdeal),active=!!session?.active,samples=active?(session.samples||[]):(session?.trace||[]).map((actual,index)=>({shot:index+1,actual,error:session?.shotErrors?.[index]||0,late:(session?.shotErrors?.[index]||0)>recoilErrorThreshold})),firedCount=samples.length;
+    const toBullet=p=>({x:origin.x+p.x*scale,y:origin.y+p.y*scale}),toIdeal=p=>({x:origin.x-p.x*scale,y:origin.y-p.y*scale}),bullet=reference.map(toBullet),ideal=reference.map(toIdeal),active=!!session?.active,samples=active?(session.samples||[]):(session?.trace||[]).slice(0,reference.length).map((actual,index)=>({shot:index+1,actual,error:session?.shotErrors?.[index]||0,late:(session?.shotErrors?.[index]||0)>recoilErrorThreshold})),firedCount=samples.length;
     function path(points,color,width,dash=[]){if(!points.length)return;ctx.save();ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineJoin='round';ctx.lineCap='round';ctx.setLineDash(dash);ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);points.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));ctx.stroke();ctx.restore();}
     ctx.strokeStyle='#8fa66b35';ctx.setLineDash([4,5]);ctx.beginPath();ctx.moveTo(origin.x,20);ctx.lineTo(origin.x,H-20);ctx.stroke();ctx.setLineDash([]);
     path(bullet,active?'#ff955d38':'#ff955d',active?2:2.5);
@@ -306,11 +308,12 @@
     if(session?.points?.length){const mine=session.points.map(p=>({x:origin.x+p.x,y:origin.y+p.y}));path(mine,'#70d6d2',3);const last=mine.at(-1);if(last){ctx.fillStyle='#70d6d2';ctx.beginPath();ctx.arc(last.x,last.y,5,0,Math.PI*2);ctx.fill();}}
     if(samples.length){samples.forEach(sample=>{const p={x:origin.x+sample.actual.x,y:origin.y+sample.actual.y};ctx.fillStyle=sample.late?'#ff6b5b':'#70d6d2';ctx.beginPath();ctx.arc(p.x,p.y,sample.late?5:4,0,Math.PI*2);ctx.fill();ctx.fillStyle=sample.late?'#ffb0a6':'#b6ece5';ctx.font='10px ui-monospace,monospace';ctx.fillText(String(sample.shot),p.x+7,p.y-6);});}
     if(active&&session.startedAt!==null){
-      const ready=now<session.startedAt;
+      const ready=now<session.startedAt,index=Math.min(session.currentShot,reference.length-1),base=index>0?ideal[index-1]:{x:origin.x,y:origin.y},target=ideal[index]||base,elapsed=now-(session.startedAt+index*session.intervalMs),progress=ready?0:Math.max(0,Math.min(1,elapsed/session.intervalMs)),moving=ready?target:{x:base.x+(target.x-base.x)*progress,y:base.y+(target.y-base.y)*progress};
       if(ready){ctx.fillStyle='#c8dd91';ctx.fillText(`准备中 · ${(session.startedAt-now).toFixed(0)} ms 后第 1 发`,16,28);}
-      else if(session.currentShot<session.shots){
-        const index=session.currentShot,base=index?ideal[index-1]:{x:origin.x,y:origin.y},target=ideal[index],elapsed=now-(session.startedAt+index*session.intervalMs),progress=Math.max(0,Math.min(1,elapsed/session.intervalMs)),moving={x:base.x+(target.x-base.x)*progress,y:base.y+(target.y-base.y)*progress};
-        ctx.strokeStyle='#c8dd91aa';ctx.lineWidth=2;ctx.beginPath();ctx.arc(moving.x,moving.y,10+Math.sin(now/90)*2,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#c8dd91';ctx.beginPath();ctx.arc(moving.x,moving.y,3,0,Math.PI*2);ctx.fill();ctx.fillText(`第 ${index+1} 发目标 · ${(session.intervalMs*(1-progress)).toFixed(0)} ms`,moving.x+12,moving.y-8);
+      if(session.currentShot<session.shots){
+        ctx.save();ctx.shadowColor='#c8dd91';ctx.shadowBlur=18;ctx.fillStyle='#eaffb0';ctx.beginPath();ctx.arc(moving.x,moving.y,5.5,0,Math.PI*2);ctx.fill();ctx.restore();
+        ctx.save();ctx.strokeStyle='#e4ffa0';ctx.lineWidth=3;ctx.beginPath();ctx.arc(moving.x,moving.y,15+Math.sin(now/90)*2,0,Math.PI*2);ctx.stroke();ctx.strokeStyle='#c8dd91aa';ctx.lineWidth=1;ctx.beginPath();ctx.arc(moving.x,moving.y,23,0,Math.PI*2);ctx.stroke();ctx.restore();
+        ctx.fillStyle='#eaffb0';ctx.fillText(`第 ${index+1} 发目标 · ${ready?'等待开始':`${(session.intervalMs*(1-progress)).toFixed(0)} ms`}`,moving.x+18,moving.y-10);
       }
     }
     ctx.fillStyle='#c8dd91';ctx.font='12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';ctx.fillText(`${weapon.name} · ${weapon.fireRate} RPM · 每发 ${recoilInterval(weapon).toFixed(0)} ms`,16,active?48:28);ctx.textAlign='right';ctx.fillStyle='#8a9a84';ctx.fillText(`${firedCount} / ${reference.length} 发`,W-16,28);ctx.textAlign='left';ctx.fillStyle='#879685';ctx.fillText(active?'绿圈是当前目标；到点时目标未跟上就会记为偏差':'点击“开始计时训练”，再按住画布跟随绿色逐发目标',16,H-18);ctx.textAlign='right';ctx.fillText('无散布参考 · 实际命中仍受散布影响',W-16,H-18);ctx.textAlign='left';
@@ -347,18 +350,18 @@
     const session=recoilSession,now=performance.now();recordRecoilShots(now);stopRecoilAnimation();
     if(session.samples.length<3){recoilSession=null;render();toast(`本轮只完成 ${session.samples.length} 发，至少完成 3 发后才会评分。`);return;}
     const weapon=weapons.find(w=>w.id===session.weaponId)||selectedWeapon(),samples=session.samples.slice(),actual=samples.map(sample=>sample.actual),errors=samples.map(sample=>sample.error),meanError=errors.reduce((sum,n)=>sum+n,0)/errors.length,verticalError=samples.reduce((sum,sample)=>sum+sample.actual.y-sample.expected.y,0)/samples.length,lateralError=samples.reduce((sum,sample)=>sum+sample.actual.x-sample.expected.x,0)/samples.length,lateShots=samples.filter(sample=>sample.error>recoilErrorThreshold).length,timingAccuracy=(samples.length-lateShots)/samples.length*100,idealLength=Math.hypot(samples.at(-1).expected.x,samples.at(-1).expected.y),actualLength=Math.hypot(samples.at(-1).actual.x,samples.at(-1).actual.y),coverage=idealLength?actualLength/idealLength:1,score=Math.max(0,Math.min(100,100-meanError*.55-(lateShots/samples.length)*20-Math.abs(1-coverage)*18));
-    const result={id:globalThis.crypto?.randomUUID?.()||`recoil-${Date.now()}`,date:today(),weaponId:weapon.id,shots:samples.length,targetShots:session.shots,score,meanError,verticalError,lateralError,lateShots,timingAccuracy,shotErrors:errors,trace:actual};state.recoil.sessions.unshift(result);state.recoil.sessions=state.recoil.sessions.slice(0,2000);recoilSession={active:false,weaponId:weapon.id,shots:samples.length,targetShots:session.shots,points:actual,samples,result};save();render();toast(`${weapon.name} 本轮 ${score.toFixed(0)} 分，${lateShots} 发到点偏差，建议已生成。`);
+    const result={id:globalThis.crypto?.randomUUID?.()||`recoil-${Date.now()}`,date:today(),weaponId:weapon.id,shots:samples.length,targetShots:session.shots,score,meanError,verticalError,lateralError,lateShots,timingAccuracy,shotErrors:errors,trace:actual};state.recoil.sessions.unshift(result);state.recoil.sessions=state.recoil.sessions.slice(0,2000);recoilSession={active:false,weaponId:weapon.id,shots:samples.length,targetShots:session.shots,reference:session.reference,scale:session.scale,points:actual,samples,result};save();render({preserveScroll:true});toast(`${weapon.name} 本轮 ${score.toFixed(0)} 分，${lateShots} 发到点偏差，建议已生成。`);
   }
   function startRecoilRecord(){
-    const weapon=selectedWeapon(),shots=Math.min(recoilShots,weapon.patternShots),reference=weaponPattern(weapon).slice(0,shots),geometry=chartGeometry(reference,760,460);if(!reference.length){toast('这把武器没有可用的逐发参考数据。');return;}stopRecoilAnimation();recoilSession={active:true,running:false,weaponId:weapon.id,shots,reference,scale:geometry.scale,intervalMs:recoilInterval(weapon),startedAt:null,currentShot:0,completeAt:null,samples:[],points:[],lastPoint:{x:0,y:0},pointerId:null,drawing:false,result:null};render();
+    const weapon=selectedWeapon(),shots=Math.min(recoilShots,weapon.patternShots),reference=weaponPattern(weapon).slice(0,shots),geometry=chartGeometry(reference,760,460);if(!reference.length){toast('这把武器没有可用的逐发参考数据。');return;}stopRecoilAnimation();recoilSession={active:true,running:false,weaponId:weapon.id,shots,reference,scale:geometry.scale,intervalMs:recoilInterval(weapon),startedAt:null,currentShot:0,completeAt:null,samples:[],points:[],lastPoint:{x:0,y:0},pointerId:null,drawing:false,result:null};render({preserveScroll:true});
   }
   function updateSensitivityMetrics(){
     const p=profileFor(state.sensitivity.active),eDpi=p.dpi*p.sens;
     const values={edpi:decimal(eDpi),cm:cm360(eDpi).toFixed(1),scoped:decimal(eDpi*p.zoom)};
     Object.entries(values).forEach(([key,value])=>{const node=$(`[data-metric="${key}"]`);if(node)node.textContent=value;});
   }
-  function render(){
-    const parts=location.hash.slice(1).split('/');route=parts[0]||'dashboard';
+  function render({preserveScroll=false}={}){
+    const savedScroll=preserveScroll?window.scrollY:0,parts=location.hash.slice(1).split('/');route=parts[0]||'dashboard';
     if(route!=='sensitivity'&&aimSession?.running){stopAimClock();aimSession=null;}
     if(route!=='recoil'&&recoilSession?.active){stopRecoilAnimation();recoilSession=null;}
     const nav=route==='chapter'?'library':route,labels={dashboard:'训练台',library:'学习手册',plan:'八周计划',journal:'复盘日志',sensitivity:'灵敏度实验室',recoil:'压枪训练',tactics:'地图战术板'};
@@ -367,7 +370,7 @@
     $('#main').innerHTML=(warning?`<p class="storage-warning" role="alert">${esc(warning)}</p>`:'')+html;$$('[data-check]').forEach(el=>el.checked=!!state.checks[el.dataset.check]);
     document.title=`${route==='chapter'?(chapters.find(c=>c.id===parts[1])?.title||'学习手册'):(labels[nav]||'训练台')} · CS2 FIELDNOTES`;
     if(route==='recoil')drawRecoil();
-    if(parts[2])document.getElementById(parts[2])?.scrollIntoView({block:'start'});else window.scrollTo({top:0,behavior:'instant'});
+    if(preserveScroll)window.scrollTo({top:savedScroll,behavior:'instant'});else if(parts[2])document.getElementById(parts[2])?.scrollIntoView({block:'start'});else window.scrollTo({top:0,behavior:'instant'});
   }
   function formatTime(s){s=Math.max(0,Math.ceil(s));return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;}
   function timerUI(){if($('#timer-display'))$('#timer-display').textContent=formatTime(remaining);if($('#timer-toggle'))$('#timer-toggle').textContent=timerEnd?'暂停计时':'开始计时';}
@@ -385,12 +388,12 @@
     if(t.dataset.utilityType){if(t.dataset.utilityType==='all'||tacticUtilityById(t.dataset.utilityType)){tacticsUtility=t.dataset.utilityType;render();}return;}
     if(t.dataset.lineupId){if(tacticLineupsFor(tacticsMapId).some(item=>item.id===t.dataset.lineupId)){tacticsLineupId=t.dataset.lineupId;const y=window.scrollY;render();window.scrollTo({top:y,behavior:'instant'});}return;}
     if(t.dataset.recoilFilter){
-      recoilCategory=t.dataset.recoilFilter;const first=weapons.find(w=>(recoilCategory==='全部'||w.category===recoilCategory)&&(!recoilQuery.trim()||`${w.name} ${w.alias} ${w.category}`.toLowerCase().includes(recoilQuery.trim().toLowerCase())));if(first)recoilWeaponId=first.id;stopRecoilAnimation();recoilSession=null;render();return;
+      recoilCategory=t.dataset.recoilFilter;const first=weapons.find(w=>(recoilCategory==='全部'||w.category===recoilCategory)&&(!recoilQuery.trim()||`${w.name} ${w.alias} ${w.category}`.toLowerCase().includes(recoilQuery.trim().toLowerCase())));if(first)recoilWeaponId=first.id;stopRecoilAnimation();recoilSession=null;render({preserveScroll:true});return;
     }
-    if(t.dataset.recoilWeapon){recoilWeaponId=t.dataset.recoilWeapon;stopRecoilAnimation();recoilSession=null;render();return;}
+    if(t.dataset.recoilWeapon){recoilWeaponId=t.dataset.recoilWeapon;stopRecoilAnimation();recoilSession=null;render({preserveScroll:true});return;}
     if(t.id==='recoil-start'){if(!recoilSession?.active)startRecoilRecord();return;}
     if(t.id==='recoil-finish'){finishRecoil();return;}
-    if(t.id==='recoil-clear'){stopRecoilAnimation();recoilSession=null;render();return;}
+    if(t.id==='recoil-clear'){stopRecoilAnimation();recoilSession=null;render({preserveScroll:true});return;}
     if(t.id==='backup-open'||t.id==='journal-backup')$('#backup-dialog').showModal();
     if(t.id==='backup-close')$('#backup-dialog').close();if(t.id==='export-data')backup();
     if(t.id==='timer-toggle')toggleTimer();if(t.id==='timer-reset'){stopTimer();remaining=total;timerUI();}
@@ -419,7 +422,7 @@
     if(t.matches('[data-check]')){state.checks[t.dataset.check]=t.checked;save();}
     if(t.id==='timer-length'){stopTimer();total=Number(t.value);remaining=total;timerUI();}
     if(t.id==='log-filter'){logFilter=t.value;$('#log-list').innerHTML=logCards();}
-    if(t.id==='recoil-shots'){recoilShots=Number(t.value);if(recoilSession?.active)stopRecoilAnimation();recoilSession=null;render();}
+    if(t.id==='recoil-shots'){recoilShots=Number(t.value);if(recoilSession?.active)stopRecoilAnimation();recoilSession=null;render({preserveScroll:true});}
     if(t.id==='import-data'){
       const file=t.files?.[0];if(!file)return;
       try{
