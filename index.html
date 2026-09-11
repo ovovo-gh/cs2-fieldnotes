@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#111412">
+  <meta name="description" content="CS2 个人训练台：完整训练手册、每日打卡、八周进阶与复盘日志。">
+  <title>CS2 FIELDNOTES · 训练手记</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">跳到主要内容</a>
+  <aside class="sidebar">
+    <a href="#dashboard" class="brand"><span class="brand-mark">Ⅱ</span><span>FIELDNOTES<small>COUNTER-STRIKE 2 / 训练手记</small></span></a>
+    <span class="nav-label">你的训练空间</span>
+    <nav aria-label="主导航">
+      <a href="#dashboard" data-nav="dashboard"><span>◈</span> 训练台 <small>01</small></a>
+      <a href="#library" data-nav="library"><span>▤</span> 学习手册 <small>02</small></a>
+      <a href="#plan" data-nav="plan"><span>▦</span> 八周计划 <small>03</small></a>
+      <a href="#journal" data-nav="journal"><span>✎</span> 复盘日志 <small>04</small></a>
+    </nav>
+    <div class="side-bottom"><div class="side-rule"></div><p>把每一次练习，<br>变成下一回合的底气。</p><span class="tiny">个人训练记录 · 保存在此浏览器</span><button class="text-button" id="backup-open">备份与数据管理 ↗</button></div>
+  </aside>
+  <div class="shell">
+    <header class="topbar"><span class="breadcrumb">个人训练空间 <span>/</span> <b id="page-label">训练台</b></span><a class="top-search" href="#library">⌕ <span>查找技巧、道具与残局</span><kbd>/</kbd></a></header>
+    <main id="main" tabindex="-1">
+      <div class="page-heading"><div><p class="eyebrow">PRACTICE WITH PURPOSE</p><h1>练得有章法，打得有思路<span class="accent">。</span></h1><p class="muted">先完成今天的一小步，再把它带进下一场比赛。</p></div><span class="date-badge">CS2 · 训练台</span></div>
+      <section class="focus-card"><div><span class="pill">TODAY'S FOCUS</span><h2>停稳，再打出第一枪。</h2><p>从急停与预瞄开始，让每次交火都有准备。</p><a class="primary" href="#chapter/02">学习急停技巧 ↗</a></div><div class="key-diagram" aria-label="向右移动，反向制动，停稳开枪"><kbd>D</kbd><span>→</span><kbd>A</kbd><span>→</span><span class="crosshair">⊕</span><small>横向移动 / 反向制动 / 准确射击</small></div></section>
+      <section class="panel"><h2>今天的训练</h2><p class="muted">基础动作 8 分钟 · 专项训练 10 分钟 · 地图道具 10 分钟 · 死斗应用 7 分钟</p><a href="#library" class="text-button">打开完整训练手册 →</a></section>
+    </main>
+    <footer>FIELDNOTES / CS2 <span>有目的地训练，有依据地复盘。</span><a href="#chapter/17">资料与版本说明</a></footer>
+  </div>
+  <dialog id="backup-dialog"><div class="dialog-head"><h2>备份与数据管理</h2><button class="icon-button" id="backup-close" aria-label="关闭">×</button></div><p class="muted">训练记录仅保存在当前浏览器，不会随 GitHub 账号同步。清理浏览器数据前，请导出备份。</p><div class="dialog-actions"><button class="primary" id="export-data">导出全部记录</button><label class="secondary file-label">导入备份<input type="file" id="import-data" accept="application/json,.json"></label></div><p class="tiny">导入会按日期及记录编号合并；冲突时以备份内容为准。</p><a href="./handbook.md" download>下载 Markdown 原手册 ↗</a></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="./content.js"></script><script src="./app.js"></script>
+</body>
+</html>
