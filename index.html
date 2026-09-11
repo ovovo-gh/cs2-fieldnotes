@@ -34,6 +34,6 @@
   </div>
   <dialog id="backup-dialog"><div class="dialog-head"><h2>备份与数据管理</h2><button class="icon-button" id="backup-close" aria-label="关闭">×</button></div><p class="muted">训练记录仅保存在当前浏览器，不会随 GitHub 账号同步。清理浏览器数据前，请导出备份。</p><div class="dialog-actions"><button class="primary" id="export-data">导出全部记录</button><label class="secondary file-label">导入备份<input type="file" id="import-data" accept="application/json,.json"></label></div><p class="tiny">导入会按日期及记录编号合并；包含每日打卡、手册进度、复盘、灵敏度测试和压枪记录。</p><a href="./handbook.md" download>下载 Markdown 原手册 ↗</a></dialog>
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="./content.js"></script><script src="./app.js"></script>
+  <script src="./content.js"></script><script src="./recoil-data.js"></script><script src="./app.js"></script>
 </body>
 </html>

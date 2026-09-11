@@ -105,7 +105,7 @@
 .weapon-heading{display:flex;justify-content:space-between;gap:15px;align-items:flex-start;margin-bottom:17px}
 .weapon-heading h2{font-size:1.5rem;margin-bottom:6px}
 .weapon-heading p{font-size:.8rem;color:var(--muted);line-height:1.7;margin:0}
-.weapon-heading .weapon-tag{white-space:nowrap}
+.weapon-heading .weapon-tag{white-space:normal;text-align:right;max-width:48%;line-height:1.45}
 .weapon-tag{display:inline-flex;padding:6px 9px;border:1px solid #556846;border-radius:4px;color:var(--green);font-size:.7rem}
 .recoil-chart-frame{border:1px solid #3b4a35;border-radius:8px;background:#101710;padding:6px;position:relative}
 #recoil-canvas{display:block;width:100%;height:auto;min-height:330px;border-radius:5px;touch-action:none;cursor:crosshair}
