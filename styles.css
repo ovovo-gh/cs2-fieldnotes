@@ -183,13 +183,13 @@
 .tactic-effect-side-t{--effect-color:#ff9c61;--effect-fill:#ff9c6148;--effect-stroke:#ffd0a5}
 .tactic-effect-side-ct{--effect-color:#70c8f2;--effect-fill:#70c8f248;--effect-stroke:#c2efff}
 .tactic-effect text{font-size:2.65px;fill:#fff;paint-order:stroke;stroke:#0b100c;stroke-width:.75px;stroke-linejoin:round;text-anchor:middle;dominant-baseline:central}
-.tactic-effect-smoke circle:first-child{fill:var(--effect-fill,#b4cec536);stroke:var(--effect-stroke,#cbe8dbd8);stroke-width:.65;stroke-dasharray:1.4 1.1}
+.tactic-effect-smoke .smoke-boundary{fill:var(--effect-fill,#b4cec536);stroke:var(--effect-stroke,#cbe8dbd8);stroke-width:.65;stroke-dasharray:1.4 1.1}
 .tactic-effect-smoke .smoke-core{fill:var(--effect-fill,#dff4e955);stroke:var(--effect-stroke,#e8fff077);stroke-width:.45}
-.tactic-effect-fire ellipse:first-child{fill:var(--effect-fill,#ff8c4748);stroke:var(--effect-stroke,#ffb273dd);stroke-width:.7;stroke-dasharray:1.3 1}
+.tactic-effect-fire .fire-boundary{fill:var(--effect-fill,#ff8c4748);stroke:var(--effect-stroke,#ffb273dd);stroke-width:.7;stroke-dasharray:1.3 1}
 .tactic-effect-fire .fire-inner{fill:var(--effect-fill,#ffd07045);stroke:var(--effect-stroke,#ffdf9566);stroke-width:.4}
 .tactic-effect-flash path{fill:var(--effect-fill,#fff3bd25);stroke:var(--effect-stroke,#fff1b8dd);stroke-width:.65;stroke-dasharray:1.2 .8}
 .tactic-effect-flash circle{fill:var(--effect-color,#fff3b9);stroke:var(--effect-stroke,#fff9e5);stroke-width:.45}
-.tactic-effect-he circle:first-child{fill:var(--effect-fill,#ff9a6830);stroke:var(--effect-stroke,#ffad83e0);stroke-width:.75;stroke-dasharray:1.6 1.2}
+.tactic-effect-he .blast-boundary{fill:var(--effect-fill,#ff9a6830);stroke:var(--effect-stroke,#ffad83e0);stroke-width:.75;stroke-dasharray:1.6 1.2}
 .tactic-effect-he .blast-core{fill:var(--effect-color,#ffcf9a);stroke:var(--effect-stroke,#fff0cf);stroke-width:.4}
 .map-marker{font-size:2.8px;font-weight:700;paint-order:stroke;stroke:#0b100c;stroke-width:.9px;stroke-linejoin:round}
 .map-marker text{dominant-baseline:central}
