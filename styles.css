@@ -107,7 +107,15 @@
 .weapon-heading p{font-size:.8rem;color:var(--muted);line-height:1.7;margin:0}
 .weapon-heading .weapon-tag{white-space:normal;text-align:right;max-width:48%;line-height:1.45}
 .weapon-tag{display:inline-flex;padding:6px 9px;border:1px solid #556846;border-radius:4px;color:var(--green);font-size:.7rem}
-.recoil-chart-frame{border:1px solid #3b4a35;border-radius:8px;background:#101710;padding:6px;position:relative}
+.recoil-scene-heading,.recoil-chart-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:15px;margin:2px 0 11px}
+.recoil-scene-heading h3,.recoil-chart-heading h3{font-size:1rem;margin:0 0 4px;color:#dce8cb}
+.recoil-scene-heading p,.recoil-chart-heading p{font-size:.71rem;color:var(--muted);line-height:1.6;margin:0}
+.recoil-scene-heading .eyebrow{margin:0 0 6px;font-size:.63rem}
+.scene-badge{padding:5px 8px;border:1px solid #536348;border-radius:4px;color:var(--green);font-size:.66rem;white-space:nowrap}
+.recoil-scene-frame,.recoil-chart-frame{border:1px solid #3b4a35;border-radius:8px;background:#101710;padding:6px;position:relative}
+.recoil-scene-frame{box-shadow:0 12px 30px #0003}
+#recoil-scene-canvas{display:block;width:100%;height:auto;min-height:330px;border-radius:5px;touch-action:none;cursor:crosshair;background:#101710}
+.recoil-chart-heading{margin-top:23px}
 #recoil-canvas{display:block;width:100%;height:auto;min-height:330px;border-radius:5px;touch-action:none;cursor:crosshair}
 .recoil-legend{display:flex;flex-wrap:wrap;gap:15px;padding:12px 4px 2px;font-size:.73rem;color:var(--muted)}
 .legend-dot{display:inline-block;width:10px;height:3px;border-radius:4px;vertical-align:middle;margin-right:6px;background:var(--orange)}
