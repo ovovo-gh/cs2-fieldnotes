@@ -98,7 +98,7 @@
   let remaining=480,total=480,timerEnd=null,timerInterval=null;
   let aimSession=null,aimInterval=null;
   let recoilWeaponId='ak47',recoilCategory='全部',recoilQuery='',recoilShots=10,recoilSession=null,recoilFrame=null;
-  const recoilErrorThreshold=24;
+  const recoilErrorThreshold=24,recoilCanvasSize={width:960,height:540};
   const recoilCategories=['全部','步枪','冲锋枪','机枪'];
   const recoilDeltas=value=>String(value||'').trim().split(/\s*;\s*/).filter(Boolean).map(pair=>{
     const [dx,dy]=pair.split(',').map(Number);return {dx:Number.isFinite(dx)?dx:0,dy:Number.isFinite(dy)?dy:0};
@@ -409,7 +409,7 @@
   function recoilViewSession(weapon){
     if(recoilSession&&recoilSession.weaponId===weapon.id)return recoilSession;
     const saved=state.recoil.sessions.find(item=>item.weaponId===weapon.id);if(!saved)return null;
-    const targetShots=Math.min(saved.targetShots||saved.shots||recoilShots,weapon.patternShots),reference=weaponPattern(weapon).slice(0,targetShots),geometry=chartGeometry(reference,760,460);
+    const targetShots=Math.min(saved.targetShots||saved.shots||recoilShots,weapon.patternShots),reference=weaponPattern(weapon).slice(0,targetShots),geometry=chartGeometry(reference,recoilCanvasSize.width,recoilCanvasSize.height);
     return {...saved,active:false,reference,scale:geometry.scale,points:saved.trace||[],sampleTrace:(saved.sampleTrace?.length?saved.sampleTrace:saved.trace||[]).slice(0,reference.length),result:saved};
   }
   function recoilList(){
@@ -438,7 +438,7 @@
   function recoilCanvasMarkup(weapon,shots){
     const session=recoilViewSession(weapon),last=session?.result;
     const legend='<div class="recoil-legend"><span><i class="legend-dot"></i>橙色：实际后坐力参考</span><span><i class="legend-dot ideal"></i>绿色圈：中心目标范围</span><span><i class="legend-dot target"></i>黄色：当前逐发目标</span><span><i class="legend-dot mine"></i>青色：我的完整轨迹</span><span><i class="legend-dot miss"></i>红点：发射时偏差</span></div>';
-    return `<div class="recoil-scene-heading"><div><p class="eyebrow">LIVE RANGE / FIRST-PERSON VIEW</p><h3>第一人称压枪视角</h3><p>墙面背景是真实 CS2 训练场截图；右下枪械会随当前选择切换为对应的真实游戏武器图。</p></div><span class="scene-badge">真实截图 · 鼠标点住练习</span></div><div class="recoil-scene-frame"><canvas id="recoil-scene-canvas" width="760" height="460" aria-label="${esc(weapon.name)}第一人称压枪模拟画面"></canvas></div><div class="recoil-chart-heading"><div><h3>逐发弹道数据</h3><p>保留精确的参考弹道、完整鼠标轨迹和逐发评分点。</p></div><span class="scene-badge">数据复盘</span></div><div class="recoil-chart-frame"><canvas id="recoil-canvas" width="760" height="460" aria-label="${esc(weapon.name)}逐发计时压枪弹道图"></canvas></div>${legend}${last?`<div class="recoil-result"><h3>本轮建议 · ${last.score.toFixed(0)} 分</h3><p>${recoilSuggestions(last,weapon).map(esc).join('<br>')}</p><div class="result-metrics"><div><b>${last.meanError.toFixed(1)} px</b><span>平均误差</span></div><div><b>${last.lateShots||0} 发</b><span>到点偏差</span></div><div><b>${(last.timingAccuracy??100).toFixed(0)}%</b><span>按时到位率</span></div><div><b>${last.verticalError>0?'+':''}${last.verticalError.toFixed(1)}</b><span>纵向偏差</span></div><div><b>${last.lateralError>0?'+':''}${last.lateralError.toFixed(1)}</b><span>横向偏差</span></div></div></div>`:''}`;
+    return `<div class="recoil-scene-heading"><div><p class="eyebrow">LIVE RANGE / FIRST-PERSON VIEW</p><h3>第一人称压枪视角</h3><p>使用真实 CS2 游戏截图；持枪手和武器固定在右下，准星与弹孔区保持在中间。</p></div><span class="scene-badge">第一人称截图 · 鼠标点住练习</span></div><div class="recoil-scene-frame"><canvas id="recoil-scene-canvas" width="${recoilCanvasSize.width}" height="${recoilCanvasSize.height}" aria-label="${esc(weapon.name)}第一人称压枪模拟画面"></canvas></div><div class="recoil-chart-heading"><div><h3>逐发弹道数据</h3><p>保留精确的参考弹道、完整鼠标轨迹和逐发评分点。</p></div><span class="scene-badge">数据复盘</span></div><div class="recoil-chart-frame"><canvas id="recoil-canvas" width="${recoilCanvasSize.width}" height="${recoilCanvasSize.height}" aria-label="${esc(weapon.name)}逐发计时压枪弹道图"></canvas></div>${legend}${last?`<div class="recoil-result"><h3>本轮建议 · ${last.score.toFixed(0)} 分</h3><p>${recoilSuggestions(last,weapon).map(esc).join('<br>')}</p><div class="result-metrics"><div><b>${last.meanError.toFixed(1)} px</b><span>平均误差</span></div><div><b>${last.lateShots||0} 发</b><span>到点偏差</span></div><div><b>${(last.timingAccuracy??100).toFixed(0)}%</b><span>按时到位率</span></div><div><b>${last.verticalError>0?'+':''}${last.verticalError.toFixed(1)}</b><span>纵向偏差</span></div><div><b>${last.lateralError>0?'+':''}${last.lateralError.toFixed(1)}</b><span>横向偏差</span></div></div></div>`:''}`;
   }
   function chartGeometry(pattern,W,H){
     const maxX=Math.max(1,...pattern.map(point=>Math.abs(point.x))),maxY=Math.max(1,...pattern.map(point=>Math.abs(point.y))),scale=Math.min((W-90)/(2*maxX),(H-90)/(2*maxY),2.2);
@@ -458,7 +458,7 @@
   function recoilClamp(value,min,max){return Math.max(min,Math.min(max,value));}
   function recoilSceneImpact(session,sample,index,center){
     const expected=sample.expected||idealRecoilPoint(session,index),actual=sample.actual||{x:0,y:0};
-    return {x:recoilClamp(center.x+(Number(actual.x)||0)-expected.x,35,725),y:recoilClamp(center.y+(Number(actual.y)||0)-expected.y,48,332)};
+    return {x:recoilClamp(center.x+(Number(actual.x)||0)-expected.x,35,center.x*2-35),y:recoilClamp(center.y+(Number(actual.y)||0)-expected.y,center.y*.21,center.y*1.445)};
   }
   function drawRecoilImpact(ctx,point,index,age){
     const angle=(index*1.37)%Math.PI,active=age>=0&&age<170;
@@ -472,22 +472,22 @@
     ctx.save();ctx.translate(point.x,point.y);ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.setLineDash(dashed?[5,4]:[]);ctx.beginPath();ctx.arc(0,0,10,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-18,0);ctx.lineTo(-5,0);ctx.moveTo(5,0);ctx.lineTo(18,0);ctx.moveTo(0,-18);ctx.lineTo(0,-5);ctx.moveTo(0,5);ctx.lineTo(0,18);ctx.stroke();ctx.restore();
   }
   const recoilWeaponAssets=Object.freeze({
-    ak47:{src:'assets/weapons/ak47.png',x:390,y:206,w:392,h:294,muzzle:[.035,.30]},
-    m4a4:{src:'assets/weapons/m4a4.png',x:386,y:198,w:400,h:300,muzzle:[.035,.40]},
-    m4a1s:{src:'assets/weapons/m4a1s.png',x:386,y:198,w:400,h:300,muzzle:[.035,.35]},
-    galil:{src:'assets/weapons/galil.png',x:390,y:206,w:392,h:294,muzzle:[.035,.31]},
-    famas:{src:'assets/weapons/famas.png',x:405,y:208,w:365,h:274,muzzle:[.04,.36]},
-    aug:{src:'assets/weapons/aug.png',x:407,y:206,w:360,h:270,muzzle:[.04,.38]},
-    sg553:{src:'assets/weapons/sg553.png',x:390,y:204,w:392,h:294,muzzle:[.035,.34]},
-    mac10:{src:'assets/weapons/mac10.png',x:410,y:220,w:350,h:263,muzzle:[.035,.47]},
-    mp9:{src:'assets/weapons/mp9.png',x:410,y:218,w:350,h:263,muzzle:[.035,.45]},
-    mp7:{src:'assets/weapons/mp7.png',x:408,y:210,w:360,h:270,muzzle:[.04,.42]},
-    mp5sd:{src:'assets/weapons/mp5sd.png',x:400,y:208,w:370,h:278,muzzle:[.04,.36]},
-    ump45:{src:'assets/weapons/ump45.png',x:410,y:218,w:360,h:270,muzzle:[.04,.41]},
-    p90:{src:'assets/weapons/p90.png',x:412,y:210,w:355,h:266,muzzle:[.04,.60]},
-    bizon:{src:'assets/weapons/bizon.png',x:410,y:210,w:360,h:270,muzzle:[.04,.40]},
-    m249:{src:'assets/weapons/m249.png',x:390,y:190,w:390,h:293,muzzle:[.04,.28]},
-    negev:{src:'assets/weapons/negev.png',x:385,y:190,w:395,h:296,muzzle:[.04,.24]}
+    ak47:{src:'assets/recoil-range.jpg',flip:true,muzzle:[.73,.78]},
+    m4a4:{src:'assets/viewmodels/m4a4.png',muzzle:[.57,.47]},
+    m4a1s:{src:'assets/viewmodels/m4a1s.jpg',muzzle:[.60,.64]},
+    galil:{src:'assets/viewmodels/galil.jpg',muzzle:[.20,.62]},
+    famas:{src:'assets/viewmodels/famas.jpg',muzzle:[.70,.62]},
+    aug:{src:'assets/viewmodels/aug.png',muzzle:[.62,.73]},
+    sg553:{src:'assets/viewmodels/sg553.jpg',muzzle:[.25,.86]},
+    mac10:{src:'assets/viewmodels/mac10.jpg',muzzle:[.65,.73]},
+    mp9:{src:'assets/viewmodels/mp9.webp',muzzle:[.61,.57]},
+    mp7:{src:'assets/viewmodels/mp7.webp',muzzle:[.61,.70]},
+    mp5sd:{src:'assets/viewmodels/mp5sd.jpg',muzzle:[.31,.76]},
+    ump45:{src:'assets/viewmodels/ump45.jpg',muzzle:[.34,.74]},
+    p90:{src:'assets/viewmodels/p90.webp',muzzle:[.60,.58]},
+    bizon:{src:'assets/viewmodels/bizon.webp',muzzle:[.62,.70]},
+    m249:{src:'assets/viewmodels/m249.jpg',muzzle:[.25,.76]},
+    negev:{src:'assets/viewmodels/negev.jpg',muzzle:[.66,.72]}
   });
   const recoilImageCache=new Map();
   function recoilImage(src){
@@ -495,25 +495,21 @@
     const image=new Image();image.onload=()=>{if(route==='recoil')drawRecoil();};image.src=src;recoilImageCache.set(src,image);return image;
   }
   function recoilWeaponAsset(weapon){return recoilWeaponAssets[weapon?.id]||recoilWeaponAssets.ak47;}
-  function drawRecoilRangeBackground(ctx,W,H){
-    const screenshot=recoilImage('assets/recoil-range.jpg');
+  function drawRecoilRangeBackground(ctx,W,H,weapon){
+    const asset=recoilWeaponAsset(weapon),screenshot=recoilImage(asset.src);
     ctx.fillStyle='#101710';ctx.fillRect(0,0,W,H);
     if(screenshot.complete&&screenshot.naturalWidth){
-      const cropHeight=Math.min(350,screenshot.naturalHeight);
-      ctx.drawImage(screenshot,0,0,screenshot.naturalWidth,cropHeight,0,0,W,342);
-      ctx.fillStyle='#09120c18';ctx.fillRect(0,0,W,342);
+      const scale=Math.max(W/screenshot.naturalWidth,H/screenshot.naturalHeight),width=screenshot.naturalWidth*scale,height=screenshot.naturalHeight*scale,x=(W-width)/2,y=(H-height)/2;
+      ctx.save();if(asset.flip){ctx.translate(W,0);ctx.scale(-1,1);}ctx.drawImage(screenshot,x,y,width,height);ctx.restore();
+      ctx.fillStyle='#07100c22';ctx.fillRect(0,0,W,H);
     }else{
-      const wall=ctx.createLinearGradient(0,0,0,342);wall.addColorStop(0,'#626a63');wall.addColorStop(1,'#3b473e');ctx.fillStyle=wall;ctx.fillRect(0,0,W,342);
-      ctx.strokeStyle='#a4b19c55';ctx.lineWidth=1;for(let y=45;y<342;y+=34){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}for(let x=0;x<W;x+=49){ctx.beginPath();ctx.moveTo(x,31);ctx.lineTo(x,342);ctx.stroke();}
+      const wall=ctx.createLinearGradient(0,0,0,H);wall.addColorStop(0,'#626a63');wall.addColorStop(1,'#3b473e');ctx.fillStyle=wall;ctx.fillRect(0,0,W,H);
+      ctx.strokeStyle='#a4b19c55';ctx.lineWidth=1;for(let y=45;y<H;y+=34){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}for(let x=0;x<W;x+=49){ctx.beginPath();ctx.moveTo(x,31);ctx.lineTo(x,H);ctx.stroke();}
     }
-    const floor=ctx.createLinearGradient(0,342,0,H);floor.addColorStop(0,'#263229');floor.addColorStop(1,'#080d0a');ctx.fillStyle=floor;ctx.fillRect(0,342,W,H-342);ctx.strokeStyle='#a7b79a55';ctx.beginPath();ctx.moveTo(0,342);ctx.lineTo(W,342);ctx.stroke();
     ctx.fillStyle='#07100ca8';ctx.fillRect(0,0,14,H);ctx.fillRect(W-14,0,14,H);
   }
-  function drawRecoilWeaponImage(ctx,W,H,weapon){
-    const asset=recoilWeaponAsset(weapon),image=recoilImage(asset.src),sx=W/760,sy=H/460,x=asset.x*sx,y=asset.y*sy,w=asset.w*sx,h=asset.h*sy,muzzle={x:x+asset.muzzle[0]*w,y:y+asset.muzzle[1]*h};
-    if(!image.complete||!image.naturalWidth)return muzzle;
-    ctx.save();ctx.globalAlpha=.98;ctx.shadowColor='#000b';ctx.shadowBlur=18;ctx.shadowOffsetX=-5;ctx.shadowOffsetY=12;ctx.drawImage(image,x,y,w,h);ctx.restore();return muzzle;
-  }
+  function recoilMuzzlePoint(W,H,weapon){const asset=recoilWeaponAsset(weapon);return {x:W*asset.muzzle[0],y:H*asset.muzzle[1]};}
+  /* Legacy vector painter intentionally disabled; the range now uses real first-person screenshots.
   function recoilWeaponVisual(weapon){
     const base={variant:'rifle',metal:'#344139',dark:'#0d130f',highlight:'#71806b',furniture:'#29352c',mag:'straight',stock:'collapsible',sight:'rail',suppressed:false,handguard:'long'};
     const profiles={
@@ -598,15 +594,16 @@
     ctx.fillStyle='#c8dd91';ctx.font='bold 8px ui-monospace,monospace';ctx.fillText(String(weapon?.name||'AUTO').toUpperCase(),-88,-34);ctx.fillStyle='#101710';ctx.fillRect(-95,-29,76,2);
     ctx.restore();return toScreen(muzzleLocal.x,muzzleLocal.y);
   }
+  */
   function drawRecoilScene(now,weapon,session,reference){
     const canvas=$('#recoil-scene-canvas');if(!canvas)return;
-    const ctx=canvas.getContext('2d'),W=760,H=460,center={x:W/2,y:H/2},samples=recoilDisplaySamples(session,reference),active=!!session?.active;
-    drawRecoilRangeBackground(ctx,W,H);
-    ctx.save();ctx.fillStyle='#c8dd9118';ctx.strokeStyle='#c8dd91';ctx.lineWidth=2;ctx.setLineDash([6,5]);ctx.beginPath();ctx.arc(center.x,center.y,recoilErrorThreshold*1.15,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(center.x-27,center.y);ctx.lineTo(center.x+27,center.y);ctx.moveTo(center.x,center.y-27);ctx.lineTo(center.x,center.y+27);ctx.stroke();ctx.restore();
+    const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height,center={x:W/2,y:H/2},samples=recoilDisplaySamples(session,reference),active=!!session?.active;
+    drawRecoilRangeBackground(ctx,W,H,weapon);
+    ctx.save();ctx.fillStyle='#c8dd9118';ctx.strokeStyle='#c8dd91';ctx.shadowColor='#061006cc';ctx.shadowBlur=5;ctx.lineWidth=2;ctx.setLineDash([6,5]);ctx.beginPath();ctx.arc(center.x,center.y,recoilErrorThreshold*1.15,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.shadowBlur=0;ctx.setLineDash([]);ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(center.x-27,center.y);ctx.lineTo(center.x+27,center.y);ctx.moveTo(center.x,center.y-27);ctx.lineTo(center.x,center.y+27);ctx.stroke();ctx.restore();
     samples.forEach((sample,index)=>drawRecoilImpact(ctx,recoilSceneImpact(session,sample,index,center),index,typeof sample.at==='number'?now-sample.at:-1));
-    const currentIndex=Math.min(session?.currentShot||0,Math.max(0,reference.length-1)),expected=session&&reference.length?idealRecoilPoint(session,currentIndex):{x:0,y:0},targetPoint={x:recoilClamp(center.x+expected.x,35,725),y:recoilClamp(center.y+expected.y,48,332)},actual=session?.lastPoint?{x:recoilClamp(center.x+session.lastPoint.x,35,725),y:recoilClamp(center.y+session.lastPoint.y,48,332)}:center;
+    const currentIndex=Math.min(session?.currentShot||0,Math.max(0,reference.length-1)),expected=session&&reference.length?idealRecoilPoint(session,currentIndex):{x:0,y:0},targetPoint={x:recoilClamp(center.x+expected.x,35,center.x*2-35),y:recoilClamp(center.y+expected.y,center.y*.21,center.y*1.445)},actual=session?.lastPoint?{x:recoilClamp(center.x+session.lastPoint.x,35,center.x*2-35),y:recoilClamp(center.y+session.lastPoint.y,center.y*.21,center.y*1.445)}:center;
     if(active&&session.startedAt!==null&&session.currentShot<session.shots){drawRecoilReticle(ctx,targetPoint,'#ffd166',true);drawRecoilReticle(ctx,actual,'#70d6d2',false);}
-    const latest=samples.at(-1),muzzle=drawRecoilWeaponImage(ctx,W,H,weapon);if(active&&latest&&typeof latest.at==='number'){const age=now-latest.at;if(age>=0&&age<150){const impact=recoilSceneImpact(session,latest,samples.length-1,center),strength=1-age/150;ctx.save();ctx.globalAlpha=strength;ctx.strokeStyle='#ffe08a';ctx.shadowColor='#ffd166';ctx.shadowBlur=8;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(muzzle.x,muzzle.y);ctx.lineTo(impact.x,impact.y);ctx.stroke();ctx.restore();}}
+    const latest=samples.at(-1),muzzle=recoilMuzzlePoint(W,H,weapon);if(active&&latest&&typeof latest.at==='number'){const age=now-latest.at;if(age>=0&&age<150){const impact=recoilSceneImpact(session,latest,samples.length-1,center),strength=1-age/150;ctx.save();ctx.globalAlpha=strength;ctx.strokeStyle='#ffe08a';ctx.shadowColor='#ffd166';ctx.shadowBlur=8;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(muzzle.x,muzzle.y);ctx.lineTo(impact.x,impact.y);ctx.stroke();ctx.restore();}}
     ctx.fillStyle='#dce8cb';ctx.font='bold 11px ui-monospace,monospace';ctx.fillText('LIVE RECOIL RANGE',26,20);ctx.font='12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';ctx.fillText(`${weapon.name} · 全自动`,26,48);ctx.textAlign='right';ctx.fillStyle='#c8dd91';ctx.font='bold 12px ui-monospace,monospace';ctx.fillText(`${samples.length} / ${reference.length} 发`,W-26,25);ctx.font='10px ui-monospace,monospace';ctx.fillStyle='#aabca2';ctx.fillText(active?(session.startedAt===null?'CLICK TO FIRE':'LIVE · HOLD TO CONTROL'):session?.result?'REPLAY · WALL IMPACTS':'AIM AT CENTER',W-26,46);ctx.textAlign='left';ctx.fillStyle='#b9c8b1';ctx.font='10px ui-monospace,monospace';ctx.fillText(`WALL IMPACTS  ${samples.length}  ·  TARGET ZONE  ${recoilErrorThreshold}px`,26,H-18);
     const gun=muzzle;if(active&&latest&&typeof latest.at==='number'){const age=now-latest.at;if(age>=0&&age<125){const strength=1-age/125;ctx.save();ctx.globalAlpha=strength;ctx.translate(gun.x,gun.y);ctx.fillStyle='#fff0ad';ctx.shadowColor='#ffd166';ctx.shadowBlur=20;ctx.beginPath();ctx.moveTo(-9,4);ctx.lineTo(-3,-31-strength*12);ctx.lineTo(4,-11);ctx.lineTo(14,-24-strength*8);ctx.lineTo(10,5);ctx.closePath();ctx.fill();ctx.fillStyle='#ff955d';ctx.beginPath();ctx.moveTo(-5,3);ctx.lineTo(1,-19-strength*8);ctx.lineTo(7,4);ctx.closePath();ctx.fill();ctx.restore();}}
   }
@@ -631,7 +628,7 @@
   function startRecoilAnimation(){stopRecoilAnimation();recoilFrame=requestRecoilFrame(recoilAnimationLoop);}
   function drawRecoil(now=performance.now()){
     const canvas=$('#recoil-canvas');if(!canvas)return;
-    const ctx=canvas.getContext('2d'),W=760,H=460,weapon=selectedWeapon(),pattern=weaponPattern(weapon).slice(0,Math.min(recoilShots,weapon.patternShots)),session=recoilViewSession(weapon),reference=session?.reference?.length?session.reference:pattern,geometry=chartGeometry(reference,W,H),origin=geometry.origin,scale=session?.scale||geometry.scale;
+    const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height,weapon=selectedWeapon(),pattern=weaponPattern(weapon).slice(0,Math.min(recoilShots,weapon.patternShots)),session=recoilViewSession(weapon),reference=session?.reference?.length?session.reference:pattern,geometry=chartGeometry(reference,W,H),origin=geometry.origin,scale=session?.scale||geometry.scale;
     drawRecoilScene(now,weapon,session,reference);
     drawCanvasBackground(ctx,W,H);ctx.font='12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
     const toBullet=p=>({x:origin.x+p.x*scale,y:origin.y+p.y*scale}),toIdeal=p=>({x:origin.x-p.x*scale,y:origin.y-p.y*scale}),bullet=reference.map(toBullet),ideal=reference.map(toIdeal),active=!!session?.active,samples=recoilDisplaySamples(session,reference),firedCount=samples.length;
@@ -660,7 +657,7 @@
     const session=recoilSession?.weaponId===weapon.id?recoilSession:null;
     const action=session?.active?(session.startedAt===null?'点住画布开始':session.running?'计时进行中…':session.currentShot>=session.shots?'已发完，松开评分':'继续按住画布'): '开始计时训练';
     const controls=fixed?`<div class="recoil-controls"><label>训练弹数<select id="recoil-shots" aria-label="训练弹数">${options.map(n=>`<option value="${n}" ${n===recoilShots?'selected':''}>前 ${n} 发</option>`).join('')}</select></label><span class="timing-badge">${weapon.fireRate} RPM · 每发 ${recoilInterval(weapon).toFixed(0)} ms</span><button class="primary" id="recoil-start">${action}</button>${session?.active?'<button class="secondary" id="recoil-finish">结束并评分</button>':'<button class="secondary" id="recoil-clear">清除本轮</button>'}</div><div class="recoil-instruction"><strong>操作：</strong>先点“开始计时训练”，再点住画布，第一发会立即按当前枪械节奏计时；绿色圈固定在中心，黄色目标沿下一发的补偿方向移动。每一发到点时，系统读取你当下的位置；黄色目标还没跟上，这一发就按发射瞬间的偏差计分。松开鼠标或点击“结束并评分”后保存。建议先练前 10 发，再逐步增加。</div>`:`<div class="recoil-controls"><span class="tiny">当前训练：${esc(weaponMechanicLabel(weapon))}</span></div><div class="recoil-instruction"><strong>当前页面只保留可连续扫射武器：</strong>狙击枪、点射 / 单发手枪和霰弹枪已移出，避免用一条不适用的固定曲线误导训练。</div>`;
-    return `<div class="lab-hero"><div><p class="eyebrow">RECOIL LAB / WEAPON CONTROL</p><h2>让每一发都赶在下一发之前到位。</h2><p>这里只练可连续扫射的步枪、冲锋枪和机枪。训练按每把枪的射速逐发播放：到点就记录你的即时位置，来不及完成补偿的子弹会留下红点并进入建议。</p></div><div class="lab-stat-stack"><div class="lab-stat"><strong>${weapons.length}</strong><span>可训练自动武器</span></div><div class="lab-stat"><strong>${state.recoil.sessions.length}</strong><span>压枪记录</span></div></div></div><div class="recoil-layout"><aside class="panel weapon-panel"><div class="section-head"><h2>选择武器</h2><span class="tiny">${weapons.length} 把</span></div><input class="weapon-search" id="recoil-search" type="search" placeholder="搜索 AK、咖喱、M4…" aria-label="搜索武器" value="${esc(recoilQuery)}"><div class="weapon-filters">${recoilCategories.map(c=>`<button class="weapon-filter ${recoilCategory===c?'active':''}" data-recoil-filter="${c}">${c}</button>`).join('')}</div><p class="weapon-count">显示 ${weapons.filter(w=>(recoilCategory==='全部'||w.category===recoilCategory)&&(!recoilQuery.trim()||`${w.name} ${w.alias} ${w.category}`.toLowerCase().includes(recoilQuery.trim().toLowerCase()))).length} 把</p><div class="weapon-list" id="weapon-list">${recoilList()}</div></aside><section class="panel recoil-main"><div class="weapon-heading"><div><p class="eyebrow">${esc(weapon.category)} / ${esc(weapon.difficulty)}</p><h2>${esc(weapon.name)}</h2><p>${esc(weapon.note)}</p></div><span class="weapon-tag">${esc(weaponAmmoLabel(weapon))} · ${esc(weaponMechanicLabel(weapon))}</span></div>${controls}${recoilCanvasMarkup(weapon,recoilShots)}</section><aside class="panel recoil-side"><div class="section-head"><h2>训练概览</h2><span class="tiny">本地保存</span></div>${recoilSummary()}<div class="section-head"><h2>最近记录</h2></div>${recoilHistory()}<div class="chart-note"><strong>数据口径：</strong>参考数据按当前 CS2 的逐发后坐力机制整理，按弹匣长度逐发保存；画布展示的是无散布参考路径和你的发射时坐标，不是带随机散布的命中保证。射速用于动画节拍，站姿、移动、距离、开镜状态和散布仍会改变游戏内实际落点。<br><a href="https://www.counter-strike.net/newsentry/532126482488623360" target="_blank" rel="noreferrer">Valve 弹药机制更新 ↗</a> · <a href="https://csdb.gg/recoil-patterns/" target="_blank" rel="noreferrer">逐发后坐力参考 ↗</a> · <a href="https://github.com/SteamTracking/GameTracking-CS2/blob/master/DumpSource2/schemas/server/CBasePlayerWeaponVData.h" target="_blank" rel="noreferrer">GameTracking 武器字段 ↗</a><br><span class="tiny">训练场截图：Refrag CS2 Aim Training Guide；武器图：CS2-API 的游戏内基础武器素材映射。素材只用于本项目训练展示。</span></div></aside></div>`;
+    return `<div class="lab-hero"><div><p class="eyebrow">RECOIL LAB / WEAPON CONTROL</p><h2>让每一发都赶在下一发之前到位。</h2><p>这里只练可连续扫射的步枪、冲锋枪和机枪。训练按每把枪的射速逐发播放：到点就记录你的即时位置，来不及完成补偿的子弹会留下红点并进入建议。</p></div><div class="lab-stat-stack"><div class="lab-stat"><strong>${weapons.length}</strong><span>可训练自动武器</span></div><div class="lab-stat"><strong>${state.recoil.sessions.length}</strong><span>压枪记录</span></div></div></div><div class="recoil-layout"><aside class="panel weapon-panel"><div class="section-head"><h2>选择武器</h2><span class="tiny">${weapons.length} 把</span></div><input class="weapon-search" id="recoil-search" type="search" placeholder="搜索 AK、咖喱、M4…" aria-label="搜索武器" value="${esc(recoilQuery)}"><div class="weapon-filters">${recoilCategories.map(c=>`<button class="weapon-filter ${recoilCategory===c?'active':''}" data-recoil-filter="${c}">${c}</button>`).join('')}</div><p class="weapon-count">显示 ${weapons.filter(w=>(recoilCategory==='全部'||w.category===recoilCategory)&&(!recoilQuery.trim()||`${w.name} ${w.alias} ${w.category}`.toLowerCase().includes(recoilQuery.trim().toLowerCase()))).length} 把</p><div class="weapon-list" id="weapon-list">${recoilList()}</div></aside><section class="panel recoil-main"><div class="weapon-heading"><div><p class="eyebrow">${esc(weapon.category)} / ${esc(weapon.difficulty)}</p><h2>${esc(weapon.name)}</h2><p>${esc(weapon.note)}</p></div><span class="weapon-tag">${esc(weaponAmmoLabel(weapon))} · ${esc(weaponMechanicLabel(weapon))}</span></div>${controls}${recoilCanvasMarkup(weapon,recoilShots)}</section><aside class="panel recoil-side"><div class="section-head"><h2>训练概览</h2><span class="tiny">本地保存</span></div>${recoilSummary()}<div class="section-head"><h2>最近记录</h2></div>${recoilHistory()}<div class="chart-note"><strong>数据口径：</strong>参考数据按当前 CS2 的逐发后坐力机制整理，按弹匣长度逐发保存；画布展示的是无散布参考路径和你的发射时坐标，不是带随机散布的命中保证。射速用于动画节拍，站姿、移动、距离、开镜状态和散布仍会改变游戏内实际落点。<br><a href="https://www.counter-strike.net/newsentry/532126482488623360" target="_blank" rel="noreferrer">Valve 弹药机制更新 ↗</a> · <a href="https://csdb.gg/recoil-patterns/" target="_blank" rel="noreferrer">逐发后坐力参考 ↗</a> · <a href="https://github.com/SteamTracking/GameTracking-CS2/blob/master/DumpSource2/schemas/server/CBasePlayerWeaponVData.h" target="_blank" rel="noreferrer">GameTracking 武器字段 ↗</a><br><span class="tiny">持枪视角素材：真实 CS2 第一人称截图（不同武器对应不同截图）；本项目不再使用自绘枪械。</span></div></aside></div>`;
   }
   function stopAimClock(){clearInterval(aimInterval);aimInterval=null;}
   function setAimTarget(){if(!aimSession)return;aimSession.target=aimTargetPosition();aimSession.targetAt=performance.now();const target=$('.aim-target');if(target){target.style.left=`${aimSession.target.left}%`;target.style.top=`${aimSession.target.top}%`;}}
@@ -694,7 +691,7 @@
     const result={id:globalThis.crypto?.randomUUID?.()||`recoil-${Date.now()}`,date:today(),weaponId:weapon.id,shots:samples.length,targetShots:session.shots,score,meanError,verticalError,lateralError,lateShots,timingAccuracy,shotErrors:errors,trace,sampleTrace:actual};state.recoil.sessions.unshift(result);state.recoil.sessions=state.recoil.sessions.slice(0,2000);recoilSession={active:false,weaponId:weapon.id,shots:samples.length,targetShots:session.shots,reference:session.reference,scale:session.scale,points:trace,sampleTrace:actual,samples,result};save();render({preserveScroll:true});toast(`${weapon.name} 本轮 ${score.toFixed(0)} 分，${lateShots} 发到点偏差，建议已生成。`);
   }
   function startRecoilRecord(){
-    const weapon=selectedWeapon(),shots=Math.min(recoilShots,weapon.patternShots),reference=weaponPattern(weapon).slice(0,shots),geometry=chartGeometry(reference,760,460);if(!reference.length){toast('这把武器没有可用的逐发参考数据。');return;}stopRecoilAnimation();recoilSession={active:true,running:false,weaponId:weapon.id,shots,reference,scale:geometry.scale,intervalMs:recoilInterval(weapon),startedAt:null,currentShot:0,completeAt:null,samples:[],points:[],lastPoint:{x:0,y:0},pointerId:null,drawing:false,result:null};render({preserveScroll:true});
+    const weapon=selectedWeapon(),shots=Math.min(recoilShots,weapon.patternShots),reference=weaponPattern(weapon).slice(0,shots),geometry=chartGeometry(reference,recoilCanvasSize.width,recoilCanvasSize.height);if(!reference.length){toast('这把武器没有可用的逐发参考数据。');return;}stopRecoilAnimation();recoilSession={active:true,running:false,weaponId:weapon.id,shots,reference,scale:geometry.scale,intervalMs:recoilInterval(weapon),startedAt:null,currentShot:0,completeAt:null,samples:[],points:[],lastPoint:{x:0,y:0},pointerId:null,drawing:false,result:null};render({preserveScroll:true});
   }
   function updateSensitivityMetrics(){
     const p=profileFor(state.sensitivity.active),eDpi=p.dpi*p.sens;

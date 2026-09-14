@@ -114,9 +114,9 @@
 .scene-badge{padding:5px 8px;border:1px solid #536348;border-radius:4px;color:var(--green);font-size:.66rem;white-space:nowrap}
 .recoil-scene-frame,.recoil-chart-frame{border:1px solid #3b4a35;border-radius:8px;background:#101710;padding:6px;position:relative}
 .recoil-scene-frame{box-shadow:0 12px 30px #0003}
-#recoil-scene-canvas{display:block;width:100%;height:auto;min-height:330px;border-radius:5px;touch-action:none;cursor:crosshair;background:#101710}
+#recoil-scene-canvas{display:block;width:100%;height:auto;min-height:0;aspect-ratio:16/9;border-radius:5px;touch-action:none;cursor:crosshair;background:#101710}
 .recoil-chart-heading{margin-top:23px}
-#recoil-canvas{display:block;width:100%;height:auto;min-height:330px;border-radius:5px;touch-action:none;cursor:crosshair}
+#recoil-canvas{display:block;width:100%;height:auto;min-height:0;aspect-ratio:16/9;border-radius:5px;touch-action:none;cursor:crosshair}
 .recoil-legend{display:flex;flex-wrap:wrap;gap:15px;padding:12px 4px 2px;font-size:.73rem;color:var(--muted)}
 .legend-dot{display:inline-block;width:10px;height:3px;border-radius:4px;vertical-align:middle;margin-right:6px;background:var(--orange)}
 .legend-dot.ideal{background:var(--green)}
@@ -284,7 +284,7 @@
   .aim-side{display:flex}
   .aim-live-metrics{width:100%}
   .recoil-chart-frame{padding:3px}
-  #recoil-canvas{min-height:250px}
+  #recoil-scene-canvas,#recoil-canvas{min-height:0}
   .recoil-controls{align-items:stretch}
   .recoil-controls label{width:100%;justify-content:space-between}
   .recoil-controls label select{flex:1}
