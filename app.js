@@ -284,7 +284,7 @@
   function closeTacticLineupPicker(){tacticsLineupPickMode=null;const picker=$('#tactic-lineup-picker-dialog');if(picker){picker.hidden=true;picker.classList.remove('is-open');}document.body.classList.remove('lineup-picker-open');updateTacticLineupPickUI();}
   function startTacticLineupPointPick(key){
     if(!$('#tactic-lineup-form'))return;const picker=ensureTacticLineupPicker();if(!picker)return;
-    tacticLineupPickMode=key==='target'?'target':'from';tacticsPlacementMode=false;updateTacticLineupPickUI();picker.hidden=false;picker.classList.add('is-open');document.body.classList.add('lineup-picker-open');updateTacticLineupPickerUI();$('[data-lineup-picker-close]',picker)?.focus();
+    tacticsLineupPickMode=key==='target'?'target':'from';tacticsPlacementMode=false;updateTacticLineupPickUI();picker.hidden=false;picker.classList.add('is-open');document.body.classList.add('lineup-picker-open');updateTacticLineupPickerUI();$('[data-lineup-picker-close]',picker)?.focus();
   }
   function clearTacticLineupPoint(key){
     const xField=$(`#tactic-lineup-${key}-x`),yField=$(`#tactic-lineup-${key}-y`);if(xField)xField.value='';if(yField)yField.value='';if(tacticsLineupPickMode===key)tacticsLineupPickMode=null;updateTacticLineupPickUI();
