@@ -494,11 +494,11 @@
     return {...base,...(profiles[weapon?.id]||{})};
   }
   function firstPersonGunMuzzle(W,H,weapon){
-    const p=recoilWeaponVisual(weapon),angle=.32,origin={x:W*.73,y:H*.91},x=p.suppressed?-296:-264,y=-43;
+    const p=recoilWeaponVisual(weapon),angle=.32,origin={x:W*.80,y:H*.96},x=p.suppressed?-296:-264,y=-43;
     return {x:origin.x+x*Math.cos(angle)-y*Math.sin(angle),y:origin.y+x*Math.sin(angle)+y*Math.cos(angle)};
   }
   function drawFirstPersonGun(ctx,W,H,weapon){
-    const p=recoilWeaponVisual(weapon),angle=.32,origin={x:W*.73,y:H*.91},muzzleLocal={x:p.suppressed?-296:-264,y:-43},toScreen=(x,y)=>({x:origin.x+x*Math.cos(angle)-y*Math.sin(angle),y:origin.y+x*Math.sin(angle)+y*Math.cos(angle)}),poly=(points,fill,stroke='#090e0b')=>{ctx.beginPath();ctx.moveTo(points[0][0],points[0][1]);points.slice(1).forEach(point=>ctx.lineTo(point[0],point[1]));ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();}},line=(points,color,width=1)=>{ctx.beginPath();ctx.moveTo(points[0][0],points[0][1]);points.slice(1).forEach(point=>ctx.lineTo(point[0],point[1]));ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();},rect=(x,y,w,h,fill,stroke)=>{ctx.fillStyle=fill;ctx.fillRect(x,y,w,h);if(stroke){ctx.strokeStyle=stroke;ctx.strokeRect(x,y,w,h);}};
+    const p=recoilWeaponVisual(weapon),angle=.32,origin={x:W*.80,y:H*.96},muzzleLocal={x:p.suppressed?-296:-264,y:-43},toScreen=(x,y)=>({x:origin.x+x*Math.cos(angle)-y*Math.sin(angle),y:origin.y+x*Math.sin(angle)+y*Math.cos(angle)}),poly=(points,fill,stroke='#090e0b')=>{ctx.beginPath();ctx.moveTo(points[0][0],points[0][1]);points.slice(1).forEach(point=>ctx.lineTo(point[0],point[1]));ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();}},line=(points,color,width=1)=>{ctx.beginPath();ctx.moveTo(points[0][0],points[0][1]);points.slice(1).forEach(point=>ctx.lineTo(point[0],point[1]));ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();},rect=(x,y,w,h,fill,stroke)=>{ctx.fillStyle=fill;ctx.fillRect(x,y,w,h);if(stroke){ctx.strokeStyle=stroke;ctx.strokeRect(x,y,w,h);}};
     ctx.save();ctx.translate(origin.x,origin.y);ctx.rotate(angle);ctx.shadowColor='#000c';ctx.shadowBlur=22;ctx.shadowOffsetY=12;
     poly([[18,18],[84,4],[151,54],[143,126],[86,112],[36,68]],'#1b251e');poly([[-170,50],[-126,3],[-78,17],[-70,95],[-132,130],[-184,108]],'#253128');ctx.shadowColor='transparent';
     poly([[-150,31],[-123,4],[-84,10],[-74,37],[-112,55]],'#b57b5b','#623f30');poly([[30,15],[74,4],[120,36],[109,67],[59,54]],'#bd825f','#623f30');
