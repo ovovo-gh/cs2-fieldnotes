@@ -45,7 +45,7 @@ window.CS2_TACTICS_DATA = {
     },
     {
       id: 'he',
-      short: 'HE',
+      short: '雷',
       icon: '◆',
       name: '高爆手雷',
       className: 'weapon_hegrenade',
@@ -93,6 +93,10 @@ window.CS2_TACTICS_DATA = {
       calibration: { posX: -2476, posY: 3239, scale: 4.4, rotate: 1 },
       spawns: { CT: { x: 62, y: 21 }, T: { x: 39, y: 91 } },
       bombs: { A: { x: 80, y: 16 }, B: { x: 21, y: 12 } },
+      researchSources: [
+        { title: '12 种沙二中路满封烟', source: 'https://xiaoheihe.cn/app/bbs/link/189613967', note: '小黑盒 · 10+ 张图 · 中路站位与瞄点' },
+        { title: 'DUSTⅡ 进攻道具教学（T 方）', source: 'https://api.xiaoheihe.cn/maxnews/app/share/detail/2062703', note: '小黑盒 · 烟 / 火 / 闪组合' }
+      ],
       effects: [
         { id: 'd2-mid-smoke', utility: 'smoke', label: '中路 / XBOX 烟', x: 48, y: 42, r: 7 },
         { id: 'd2-a-smoke', utility: 'smoke', label: 'A 区烟雾', x: 78, y: 21, r: 8 },
@@ -157,6 +161,9 @@ window.CS2_TACTICS_DATA = {
       calibration: { posX: -3230, posY: 1713, scale: 5.0, rotate: 0 },
       spawns: { CT: { x: 28, y: 70 }, T: { x: 87, y: 36 } },
       bombs: { A: { x: 54, y: 76 }, B: { x: 23, y: 28 } },
+      researchSources: [
+        { title: 'Mirage 道具教学检索', source: 'https://xiaoheihe.cn/app/search/list?q=CS2%20Mirage%20%E9%81%93%E5%85%B7%E6%95%99%E5%AD%A6', note: '小黑盒 · 打开后按当前版本筛选' }
+      ],
       effects: [
         { id: 'mirage-window-smoke', utility: 'smoke', label: '中路窗烟', x: 36, y: 34, r: 7 },
         { id: 'mirage-jungle-smoke', utility: 'smoke', label: 'Jungle 烟', x: 48, y: 66, r: 7 },
@@ -241,6 +248,10 @@ window.CS2_TACTICS_DATA = {
       calibration: { posX: -2087, posY: 3870, scale: 4.9, rotate: 0 },
       spawns: { CT: { x: 90, y: 35 }, T: { x: 10, y: 67 } },
       bombs: { A: { x: 81, y: 69 }, B: { x: 49, y: 22 } },
+      researchSources: [
+        { title: '道具小镇惊险 636', source: 'https://api.xiaoheihe.cn/maxnews/app/share/detail/2341632', note: '小黑盒 · 小镇烟 / 闪组合思路' },
+        { title: '小镇时间管理大师 + 636 道具', source: 'https://api.xiaoheihe.cn/maxnews/app/share/detail/2369646', note: '小黑盒 · 烟雾时机与进攻节奏' }
+      ],
       effects: [
         { id: 'inferno-coffins-smoke', utility: 'smoke', label: 'Coffins 烟', x: 56, y: 21, r: 7 },
         { id: 'inferno-ct-smoke', utility: 'smoke', label: 'CT 烟', x: 72, y: 35, r: 7 },
