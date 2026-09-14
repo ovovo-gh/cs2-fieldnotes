@@ -246,6 +246,7 @@
   }
   function tacticLineupFormDefaults(map){return {mapId:map.id,utility:'smoke',side:'T',name:'',from:{label:'',x:null,y:null},target:{label:'',x:null,y:null},technique:'左键',movement:'站定',airTime:'',steps:[],result:'',source:'',updated:today(),media:{poster:'',video:''}};}
   function tacticLineupPointSummary(point){const rawX=point?.x,rawY=point?.y,x=Number(rawX),y=Number(rawY);return rawX!==null&&rawX!==undefined&&rawX!==''&&rawY!==null&&rawY!==undefined&&rawY!==''&&Number.isFinite(x)&&Number.isFinite(y)?`已选择 · ${x.toFixed(1)} / ${y.toFixed(1)}`:'尚未在地图上选择';}
+  function tacticLineupPickerMarkup(map){return `<dialog id="tactic-lineup-picker-dialog" class="tactic-lineup-picker-dialog" aria-labelledby="tactic-lineup-picker-title"><div class="lineup-picker-head"><div><p class="eyebrow">MAP PICKER</p><h3 id="tactic-lineup-picker-title">选择投掷点</h3><p class="tiny" id="tactic-lineup-picker-hint">请在地图上点击投掷点；选完后会自动切换到落点。</p></div><button class="icon-button" type="button" data-lineup-picker-close="true" aria-label="关闭地图点选">×</button></div><div class="lineup-picker-map is-picking-from" id="tactic-lineup-picker-map"><img src="${esc(map.image)}" alt="${esc(map.name)} 地图点选区域" draggable="false"><svg class="lineup-picker-overlay" viewBox="0 0 100 100" aria-hidden="true"><line id="tactic-lineup-picker-route" x1="0" y1="0" x2="0" y2="0"></line><g id="tactic-lineup-picker-from" class="lineup-picker-point lineup-picker-point-from" style="display:none"><circle r="1.7"></circle><text x="0" y="0">投</text></g><g id="tactic-lineup-picker-target" class="lineup-picker-point lineup-picker-point-target" style="display:none"><circle r="1.7"></circle><text x="0" y="0">落</text></g></svg><div class="lineup-picker-cue" id="tactic-lineup-picker-cue">点击地图选择投掷点</div></div><div class="lineup-picker-footer"><span class="tiny" id="tactic-lineup-picker-status">投掷点：未选择 · 落点：未选择</span><button class="secondary" type="button" data-lineup-picker-close="true">取消</button></div></dialog>`;}
   function tacticLineupEditor(map){
     if(tacticLineupEditingId===null)return '';
     const saved=tacticLineupEditingId==='new'?null:customTacticLineupById(tacticLineupEditingId),lineup=saved||tacticLineupFormDefaults(map),searchUrl=`https://xiaoheihe.cn/app/search/list?q=${encodeURIComponent(`CS2 ${map.english} 道具教学`)}`,optionList=tacticUtilityTypes.map(item=>`<option value="${esc(item.id)}" ${lineup.utility===item.id?'selected':''}>${esc(tacticUtilityShort(item.id))} · ${esc(item.name)}</option>`).join('');
@@ -261,16 +262,33 @@
       if(summary){const x=xField?.value,y=yField?.value;summary.textContent=Number.isFinite(Number(x))&&x!==''&&Number.isFinite(Number(y))&&y!==''?`已选择 · ${Number(x).toFixed(1)} / ${Number(y).toFixed(1)}`:'尚未在地图上选择';}
       if(pickButton){const active=tacticsLineupPickMode===key,hasPoint=Number.isFinite(Number(xField?.value))&&xField?.value!==''&&Number.isFinite(Number(yField?.value))&&yField?.value!=='';pickButton.setAttribute('aria-pressed',String(active));pickButton.textContent=active?'请点击地图':hasPoint?'重新选择':key==='from'?'在地图上选投掷点':'在地图上选落点';pickButton.classList.toggle('active',active);}
     }
+    updateTacticLineupPickerUI();
   }
+  function tacticLineupPickerPoint(key){const x=Number($(`#tactic-lineup-${key}-x`)?.value),y=Number($(`#tactic-lineup-${key}-y`)?.value);return Number.isFinite(x)&&Number.isFinite(y)&&x>=0&&x<=100&&y>=0&&y<=100?{x,y}:null;}
+  function updateTacticLineupPickerUI(){
+    const picker=$('#tactic-lineup-picker-dialog');if(!picker)return;
+    const from=tacticLineupPickerPoint('from'),target=tacticLineupPickerPoint('target'),pickerMap=$('#tactic-lineup-picker-map'),title=$('#tactic-lineup-picker-title'),hint=$('#tactic-lineup-picker-hint'),cue=$('#tactic-lineup-picker-cue'),status=$('#tactic-lineup-picker-status'),route=$('#tactic-lineup-picker-route');
+    const setPoint=(key,point)=>{const node=$(`#tactic-lineup-picker-${key}`,picker);if(!node)return;if(point){node.setAttribute('transform',`translate(${point.x} ${point.y})`);node.style.display='';}else node.style.display='none';};
+    setPoint('from',from);setPoint('target',target);
+    if(route){if(from&&target){route.setAttribute('x1',from.x);route.setAttribute('y1',from.y);route.setAttribute('x2',target.x);route.setAttribute('y2',target.y);route.style.display='';}else route.style.display='none';}
+    const mode=tacticsLineupPickMode==='target'?'target':'from';if(pickerMap){pickerMap.classList.toggle('is-picking-from',mode==='from');pickerMap.classList.toggle('is-picking-target',mode==='target');}
+    if(title)title.textContent=mode==='from'?'选择投掷点':'选择落点';if(hint)hint.textContent=mode==='from'?'请在地图上点击投掷点；选完后会自动切换到落点。':'投掷点已记录，请在地图上点击落点。';if(cue)cue.textContent=mode==='from'?'点击地图选择投掷点':'点击地图选择落点';if(status)status.textContent=`投掷点：${from?'已选择':'未选择'} · 落点：${target?'已选择':'未选择'}`;
+  }
+  function ensureTacticLineupPicker(){
+    let picker=$('#tactic-lineup-picker-dialog');if(picker)return picker;const map=selectedTacticMap();if(!map)return null;const holder=document.createElement('div');holder.innerHTML=tacticLineupPickerMarkup(map);picker=holder.firstElementChild;if(!picker)return null;document.body.append(picker);
+    const pickerMap=$('#tactic-lineup-picker-map',picker);if(pickerMap)pickerMap.addEventListener('click',event=>{if(!tacticsLineupPickMode)return;event.stopPropagation();pickTacticLineupPoint(event,pickerMap);});
+    picker.addEventListener('close',()=>{tacticsLineupPickMode=null;updateTacticLineupPickUI();});return picker;
+  }
+  function closeTacticLineupPicker(){tacticsLineupPickMode=null;const picker=$('#tactic-lineup-picker-dialog');if(picker?.open)picker.close();else picker?.removeAttribute('open');updateTacticLineupPickUI();}
   function startTacticLineupPointPick(key){
-    if(!$('#tactic-lineup-form'))return;
-    tacticLineupPickMode=key==='target'?'target':'from';tacticsPlacementMode=false;updateTacticLineupPickUI();$('#tactic-map-canvas')?.scrollIntoView({behavior:'smooth',block:'center'});
+    if(!$('#tactic-lineup-form'))return;const picker=ensureTacticLineupPicker();if(!picker)return;
+    tacticLineupPickMode=key==='target'?'target':'from';tacticsPlacementMode=false;updateTacticLineupPickUI();if(!picker.open){if(typeof picker.showModal==='function')picker.showModal();else picker.setAttribute('open','');}updateTacticLineupPickerUI();
   }
   function clearTacticLineupPoint(key){
     const xField=$(`#tactic-lineup-${key}-x`),yField=$(`#tactic-lineup-${key}-y`);if(xField)xField.value='';if(yField)yField.value='';if(tacticsLineupPickMode===key)tacticsLineupPickMode=null;updateTacticLineupPickUI();
   }
   function pickTacticLineupPoint(event,board){
-    const key=tacticsLineupPickMode;if(!key)return;const point=tacticMapPointFromEvent(event,board),xField=$(`#tactic-lineup-${key}-x`),yField=$(`#tactic-lineup-${key}-y`);if(!xField||!yField)return;xField.value=point.x.toFixed(1);yField.value=point.y.toFixed(1);tacticsLineupPickMode=key==='from'?'target':null;updateTacticLineupPickUI();toast(key==='from'?'投掷点已记录，请继续点击地图选择落点。':'投掷点和落点已记录，可以保存这张投掷卡。');event.preventDefault();
+    const key=tacticsLineupPickMode;if(!key)return;const point=tacticMapPointFromEvent(event,board),xField=$(`#tactic-lineup-${key}-x`),yField=$(`#tactic-lineup-${key}-y`);if(!xField||!yField)return;xField.value=point.x.toFixed(1);yField.value=point.y.toFixed(1);tacticsLineupPickMode=key==='from'?'target':null;updateTacticLineupPickUI();toast(key==='from'?'投掷点已记录，请继续点击地图选择落点。':'投掷点和落点已记录，可以保存这张投掷卡。');if(key==='target'){const picker=$('#tactic-lineup-picker-dialog');if(picker?.open)picker.close();}event.preventDefault();
   }
   function updateTacticLineupResults(){
     const map=selectedTacticMap(),matches=tacticLineupMatches(map?.id),grid=$('#tactic-lineup-grid'),count=$('#tactic-lineup-count');
@@ -650,6 +668,7 @@
     const nav=route==='chapter'?'library':route,labels={dashboard:'训练台',library:'学习手册',plan:'八周计划',journal:'复盘日志',sensitivity:'灵敏度实验室',recoil:'压枪训练',tactics:'地图战术板',assets:'饰品资产'};
     $('#page-label').textContent=labels[nav]||'训练台';$$('[data-nav]').forEach(a=>{a.classList.toggle('active',a.dataset.nav===nav);if(a.dataset.nav===nav)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
     const html=route==='assets'?window.CS2Assets.render():route==='library'?library():route==='chapter'?reader(parts[1]):route==='plan'?plan():route==='journal'?journal():route==='sensitivity'?sensitivity():route==='recoil'?recoil():route==='tactics'?tactics():dashboard();
+    const lineupPicker=$('#tactic-lineup-picker-dialog');if(lineupPicker){if(lineupPicker.open)lineupPicker.close();lineupPicker.remove();}
     $('#main').innerHTML=(warning?`<p class="storage-warning" role="alert">${esc(warning)}</p>`:'')+html;$$('[data-check]').forEach(el=>el.checked=!!state.checks[el.dataset.check]);
     document.title=`${route==='chapter'?(chapters.find(c=>c.id===parts[1])?.title||'学习手册'):(labels[nav]||'训练台')} · CS2 FIELDNOTES`;
     if(route==='recoil')drawRecoil();
@@ -674,7 +693,7 @@
   }
   function removeTacticThrow(id){const plan=tacticPlanFor(tacticsMapId),index=plan.findIndex(item=>item.id===id);if(index>=0)plan.splice(index,1);}
   document.addEventListener('click',e=>{
-    const board=e.target.closest?.('#tactic-map-canvas'),player=e.target.closest?.('[data-tactic-player]');if(board&&tacticsPlacementMode&&!player){addTacticThrow(e,board);return;}if(board&&tacticsLineupPickMode&&!player&&!tacticsPlacementMode){pickTacticLineupPoint(e,board);return;}
+    const pickerBoard=e.target.closest?.('#tactic-lineup-picker-map'),board=e.target.closest?.('#tactic-map-canvas'),player=e.target.closest?.('[data-tactic-player]');if(pickerBoard&&tacticsLineupPickMode){pickTacticLineupPoint(e,pickerBoard);return;}if(board&&tacticsPlacementMode&&!player){addTacticThrow(e,board);return;}if(board&&tacticsLineupPickMode&&!player&&!tacticsPlacementMode){pickTacticLineupPoint(e,board);return;}
     const t=e.target.closest('button');if(!t)return;
     if(t.dataset.sensProfile){stopAimClock();aimSession=null;state.sensitivity.active=t.dataset.sensProfile;save();render();return;}
     if(t.dataset.dpiPreset){const p=profileFor(state.sensitivity.active),oldEdpi=p.dpi*p.sens;p.dpi=Number(t.dataset.dpiPreset);if(t.dataset.preserveEdpi==='true')p.sens=numberIn(oldEdpi/p.dpi,.01,20,p.sens);save();render();return;}
@@ -691,6 +710,7 @@
     if(t.dataset.lineupId){if(tacticLineupsFor(tacticsMapId).some(item=>item.id===t.dataset.lineupId)){tacticsLineupId=tacticsLineupId===t.dataset.lineupId?'':t.dataset.lineupId;render({preserveScroll:true});}return;}
     if(t.id==='tactic-lineup-new'){tacticLineupEditingId='new';tacticsLineupPickMode=null;render({preserveScroll:true});$('#tactic-lineup-name')?.focus();return;}
     if(t.id==='tactic-lineup-cancel'||t.id==='tactic-lineup-cancel-bottom'){tacticLineupEditingId=null;tacticsLineupPickMode=null;render({preserveScroll:true});return;}
+    if(t.dataset.lineupPickerClose){closeTacticLineupPicker();return;}
     if(t.dataset.lineupPickPoint){startTacticLineupPointPick(t.dataset.lineupPickPoint);return;}
     if(t.dataset.lineupClearPoint){clearTacticLineupPoint(t.dataset.lineupClearPoint);return;}
     if(t.dataset.editLineup){if(customTacticLineupById(t.dataset.editLineup)){tacticLineupEditingId=t.dataset.editLineup;render({preserveScroll:true});$('#tactic-lineup-name')?.focus();}return;}
